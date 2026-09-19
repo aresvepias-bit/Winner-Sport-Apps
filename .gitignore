@@ -1,6 +1,83 @@
-node_modules
-.next
-dist
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Environment variables - JANGAN PERNAH DI-PUSH
 .env
 .env.local
+.env.*.local
+**/.env
+**/.env.local
+**/.env.production
+**/.env.staging
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 *.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Prisma
+prisma/*.db
+
+# Misc
+*.tsbuildinfo
+.turbo/
+
+# ===========================
+# File Office & Dokumen - JANGAN DI-PUSH
+# ===========================
+# PDF
+*.pdf
+
+# Microsoft Word
+*.doc
+*.docx
+
+# Microsoft Excel
+*.xls
+*.xlsx
+*.xlsm
+
+# Microsoft PowerPoint
+*.ppt
+*.pptx
+
+# LibreOffice
+*.odt
+*.ods
+*.odp
+
+# ===========================
+# Folder dokumen & logo mentah
+# ===========================
+Logo/
+Docs/
+Documents/
+assets/raw/
+
+# ===========================
+# File sensitif lainnya
+# ===========================
+*.pem
+*.key
+*.cert
+*.p12
+secrets/
+credentials/
