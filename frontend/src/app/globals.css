@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/* ── Dark mode: class-based (toggled by .dark on <html>) ── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --background: #030712;
+  --foreground: #f1f5f9;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  /* ── Brand Red (Merah The Winner Sport) ── */
+  --color-brand-50:  #fef2f2;
+  --color-brand-100: #fee2e2;
+  --color-brand-200: #fecaca;
+  --color-brand-300: #fca5a5;
+  --color-brand-400: #f87171;
+  --color-brand-500: #ef4444;
+  --color-brand-600: #dc2626; /* Merah Utama Logo Winner Sport */
+  --color-brand-700: #b91c1c;
+  --color-brand-800: #991b1b;
+  --color-brand-900: #7f1d1d;
+  --color-brand-950: #450a0a;
+
+  /* Deep navy dark surfaces untuk dark mode GLC */
+  --color-neutral-950: #030712;
+  --color-neutral-900: #0d1424;
+  --color-neutral-800: #1a2236;
+  --color-neutral-700: #242f49;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
