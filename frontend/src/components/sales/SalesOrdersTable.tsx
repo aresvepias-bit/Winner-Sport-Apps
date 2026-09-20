@@ -26,12 +26,15 @@ export interface SalesOrderItem {
 
 interface SalesOrdersTableProps {
   orders: SalesOrderItem[];
+  /** Kode tipe -> nama tampilan, dari master Tipe Penjualan. */
+  salesTypeLabels?: Record<string, string>;
   onOpenPrintModal?: (order: SalesOrderItem) => void;
   onExportCsv?: () => void;
 }
 
 export default function SalesOrdersTable({
   orders,
+  salesTypeLabels = {},
   onOpenPrintModal,
   onExportCsv
 }: SalesOrdersTableProps) {
@@ -84,7 +87,7 @@ export default function SalesOrdersTable({
                   </td>
                   <td className="py-3.5">
                     <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-700 dark:text-slate-300 font-medium">
-                      {o.orderType}
+                      {salesTypeLabels[o.orderType] || o.orderType}
                     </span>
                   </td>
                   <td className="py-3.5 text-slate-700 dark:text-slate-300">

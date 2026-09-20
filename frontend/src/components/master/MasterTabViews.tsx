@@ -5,6 +5,8 @@ import ProductsTable from "@/components/master/ProductsTable";
 import BomCardsGrid from "@/components/master/BomCardsGrid";
 import ContactsTable from "@/components/master/ContactsTable";
 import EmployeesTable from "@/components/master/EmployeesTable";
+import UnitsTable from "@/components/master/UnitsTable";
+import SalesTypesTable from "@/components/master/SalesTypesTable";
 import type { MasterEntity, EditableEntity } from "@/components/master/masterEntities";
 import type { MasterData } from "@/components/master/useMasterData";
 
@@ -42,6 +44,22 @@ export default function MasterTabViews({ activeTab, data, onEdit, onDelete }: Ma
           contacts={data.contacts}
           onEdit={(item) => onEdit("contacts", item)}
           onDelete={(id, name) => onDelete("contacts", id, name)}
+        />
+      );
+    case "units":
+      return (
+        <UnitsTable
+          units={data.units}
+          onEdit={(item) => onEdit("units", item)}
+          onDelete={(id, name) => onDelete("units", id, name)}
+        />
+      );
+    case "salesTypes":
+      return (
+        <SalesTypesTable
+          salesTypes={data.salesTypes}
+          onEdit={(item) => onEdit("salesTypes", item)}
+          onDelete={(id, name) => onDelete("salesTypes", id, name)}
         />
       );
     case "employees":

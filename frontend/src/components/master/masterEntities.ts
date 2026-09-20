@@ -52,6 +52,26 @@ export const MASTER_ENTITIES: Record<MasterEntity, EntityConfig> = {
     deleted: "Kontak rekanan berhasil dihapus!",
     deleteFail: "Gagal menghapus kontak rekanan"
   },
+  units: {
+    path: "/master/units",
+    created: "Satuan Baru Berhasil Ditambahkan!",
+    createFail: "Gagal menambah satuan",
+    updated: "Data Satuan Berhasil Diperbarui!",
+    updateFail: "Gagal memperbarui satuan",
+    deleteConfirm: (name) => `Hapus satuan "${name}"? Bila masih dipakai item master, satuan hanya dinonaktifkan.`,
+    deleted: "Satuan berhasil dihapus!",
+    deleteFail: "Gagal menghapus satuan"
+  },
+  salesTypes: {
+    path: "/master/sales-types",
+    created: "Tipe Penjualan Baru Berhasil Ditambahkan!",
+    createFail: "Gagal menambah tipe penjualan",
+    updated: "Tipe Penjualan Berhasil Diperbarui!",
+    updateFail: "Gagal memperbarui tipe penjualan",
+    deleteConfirm: (name) => `Hapus tipe penjualan "${name}"? Bila sudah dipakai order, tipe hanya dinonaktifkan.`,
+    deleted: "Tipe penjualan berhasil dihapus!",
+    deleteFail: "Gagal menghapus tipe penjualan"
+  },
   employees: {
     path: "/master/employees",
     created: "Tenaga Kerja / Karyawan Baru Berhasil Ditambahkan!",
@@ -68,5 +88,7 @@ export const CREATE_BUTTON_TEXT: Record<EditableEntity, string> = {
   materials: "Tambah Bahan Baku",
   products: "Tambah Produk Pakaian",
   contacts: "Tambah Rekanan",
-  employees: "Tambah Tenaga Kerja"
+  employees: "Tambah Tenaga Kerja",
+  units: "Tambah Satuan",
+  salesTypes: "Tambah Tipe Penjualan"
 };

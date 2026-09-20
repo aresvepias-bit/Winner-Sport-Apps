@@ -1,4 +1,5 @@
 const prisma = require('../api/db');
+const { ratioToPcs } = require('../api/unitConversion');
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const TREND_MONTHS = 6;
@@ -6,10 +7,10 @@ const TREND_MONTHS = 6;
 /** Kunci bulan "2026-09" untuk mengelompokkan data. */
 const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-/** Kodi dicatat per kodi; disetarakan ke pcs agar cocok dengan HPP per pcs. */
-function toPcs(item) {
+/** Disetarakan ke pcs memakai rasio dari master Satuan, agar cocok dengan HPP per pcs. */
+async function toPcs(item) {
   const qty = Number(item.quantity) || 0;
-  return item.unitName && item.unitName.toLowerCase() === 'kodi' ? qty * 20 : qty;
+  return qty * (await ratioToPcs(item.unitName));
 }
 
 /**
@@ -72,7 +73,7 @@ const dashboardController = {
 
         for (const item of order.items) {
           itemsTotal += 1;
-          const pcs = toPcs(item);
+          const pcs = await toPcs(item);
           // Pesanan custom tanpa produk master tidak punya HPP standar — tidak dikarang.
           const cost = item.product ? Number(item.product.standardCost) : 0;
           if (item.product) itemsWithHpp += 1;

@@ -1,4 +1,5 @@
 const prisma = require('../api/db');
+const { toPcs } = require('../api/unitConversion');
 
 /**
  * Controller: Penjualan & Distribusi Pakaian (Kodi, Grosir, Custom)
@@ -124,8 +125,8 @@ const salesController = {
       // Kurangi stok jika produk terdaftar di master
       for (const item of items) {
         if (item.productId) {
-          const pcsMultiplier = (item.unitName && item.unitName.toLowerCase() === 'kodi') ? 20 : 1;
-          const totalPcsDeducted = parseInt(item.quantity) * pcsMultiplier;
+          // Rasio satuan diambil dari master Satuan (kodi 20, lusin 12, dst).
+          const totalPcsDeducted = Math.round(await toPcs(item.quantity, item.unitName));
 
           const prod = await prisma.product.findUnique({ where: { id: item.productId } });
           if (prod) {

@@ -10,11 +10,15 @@ export interface MasterData {
   boms: any[];
   contacts: any[];
   employees: any[];
+  units: any[];
+  salesTypes: any[];
 }
 
 /** Memuat data tab yang sedang aktif (tab lain dimuat saat dibuka). */
 export function useMasterData(activeTab: MasterEntity) {
-  const [data, setData] = useState<MasterData>({ materials: [], products: [], boms: [], contacts: [], employees: [] });
+  const [data, setData] = useState<MasterData>({
+    materials: [], products: [], boms: [], contacts: [], employees: [], units: [], salesTypes: []
+  });
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 

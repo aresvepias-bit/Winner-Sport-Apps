@@ -230,6 +230,27 @@ Menghapus akun = **menonaktifkan** (`isActive: false`), bukan hapus baris, karen
 
 ---
 
+## 🗂️ Master Satuan & Tipe Penjualan
+
+- **Satuan** (`Master > Satuan`) sudah ada sejak awal di tabel `Unit`, kini bisa dikelola dari UI. Kolom **Isi Satuan (`ratioToPcs`)** menentukan konversi ke pcs dan **memengaruhi HPP serta pengurangan stok** — Kodi 20, Lusin 12, sisanya 1.
+- **Tipe Penjualan** (`Master > Tipe Penjualan`) dulunya enum terkunci `SalesOrderType`; sekarang tabel `SalesType`. `SalesOrder.orderType` menyimpan **kode**-nya, jadi kode tidak bisa diubah setelah dibuat.
+- Menghapus satuan/tipe yang masih dipakai akan **menonaktifkan**, bukan menghapus, supaya riwayat lama tetap terbaca.
+- Form Order Penjualan mengambil pelanggan, tipe, dan satuan dari master, serta bisa **menambah pelanggan langsung** dari form (tombol "Baru").
+- Konversi satuan ada di `backend/api/unitConversion.js` (dengan cache; `invalidate()` dipanggil tiap satuan diubah). **Sebelumnya rasio ditulis di kode dan hanya mengenali "kodi", sehingga penjualan lusin dihitung 1 pcs — bukan 12 — dan membuat HPP serta stok meleset.**
+
+### Catatan migrasi (penting bila deploy ke database lain)
+`prisma db push` untuk perubahan enum → teks akan membuat `DROP COLUMN` dan **menghilangkan data**. Di database ini konversi dilakukan manual lebih dulu agar nilai lama selamat:
+
+```sql
+ALTER TABLE winner_sport."SalesOrder" ALTER COLUMN "orderType" DROP DEFAULT;
+ALTER TABLE winner_sport."SalesOrder" ALTER COLUMN "orderType" TYPE TEXT USING "orderType"::text;
+ALTER TABLE winner_sport."SalesOrder" ALTER COLUMN "orderType" SET DEFAULT 'SATUAN';
+```
+
+Lalu isi master tipe: `cd backend && node scripts/seed-sales-types.js` (aman diulang).
+
+---
+
 ## 📊 Dashboard & Grafik
 
 - **Semua angka dashboard dihitung dari transaksi nyata.** Sebelumnya `trendData` mengarang 5 dari 6 bulan (`monthSales * (0.8 + sin(i)*0.2)`); kini dikelompokkan per bulan dari `salesOrder` + `expense`.

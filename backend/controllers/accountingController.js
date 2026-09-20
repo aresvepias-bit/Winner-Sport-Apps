@@ -1,4 +1,5 @@
 const prisma = require('../api/db');
+const { toPcs } = require('../api/unitConversion');
 
 /**
  * Controller: Akuntansi, Kas & Bank, Biaya Operasional, dan Laba Rugi (P&L)
@@ -133,7 +134,7 @@ const accountingController = {
       let totalHpp = 0;
       for (const order of salesOrders) {
         for (const item of order.items) {
-          const qtyPcs = (item.unitName && item.unitName.toLowerCase() === 'kodi') ? item.quantity * 20 : item.quantity;
+          const qtyPcs = await toPcs(item.quantity, item.unitName);
           const itemStandardCost = item.product ? Number(item.product.standardCost) : 0;
           totalHpp += (qtyPcs * itemStandardCost);
         }

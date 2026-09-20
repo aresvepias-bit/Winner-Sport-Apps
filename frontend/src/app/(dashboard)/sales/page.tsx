@@ -12,6 +12,8 @@ import PrintInvoiceModal from "@/components/print/PrintInvoiceModal";
 export default function SalesPage() {
   const [orders, setOrders] = useState<SalesOrderItem[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [salesTypes, setSalesTypes] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -22,14 +24,18 @@ export default function SalesPage() {
     setLoading(true);
     setLoadError("");
     try {
-      const [resOrders, resContacts] = await Promise.all([
+      const [resOrders, resContacts, resTypes, resUnits] = await Promise.all([
         api.get("/sales/orders"),
-        api.get("/master/contacts")
+        api.get("/master/contacts"),
+        api.get("/master/sales-types?activeOnly=true"),
+        api.get("/master/units?activeOnly=true")
       ]);
       setOrders(Array.isArray(resOrders) ? resOrders : []);
       setCustomers(
         Array.isArray(resContacts) ? resContacts.filter((c: any) => c.type === "CUSTOMER" || c.type === "BOTH") : []
       );
+      setSalesTypes(Array.isArray(resTypes) ? resTypes : []);
+      setUnits(Array.isArray(resUnits) ? resUnits : []);
     } catch (err: any) {
       setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
@@ -46,6 +52,11 @@ export default function SalesPage() {
     setShowPrintModal(true);
   };
 
+  // Kode tipe disimpan di order; namanya diambil dari master agar mudah dibaca.
+  const salesTypeLabels: Record<string, string> = Object.fromEntries(
+    salesTypes.map((t: any) => [t.code, t.name])
+  );
+
   const handleExportSales = () => {
     const headers = [
       "No. SO",
@@ -61,13 +72,26 @@ export default function SalesPage() {
       o.soNumber,
       new Date(o.createdAt).toLocaleDateString("id-ID"),
       o.customer?.name || "Pelanggan Umum",
-      o.orderType,
+      salesTypeLabels[o.orderType] || o.orderType,
       o.totalAmount,
       o.paidAmount,
       o.paymentStatus,
       o.status
     ]);
     exportToCsv("Daftar_Sales_Order_Winner_Sport", headers, rows);
+  };
+
+  /** Menyimpan pelanggan baru dari dalam form order, lalu menambahkannya ke daftar. */
+  const handleCreateCustomer = async (data: Record<string, unknown>) => {
+    try {
+      const created = await api.post("/master/contacts", { ...data, type: "CUSTOMER" });
+      setCustomers((prev) => [...prev, created]);
+      alert("Pelanggan baru berhasil ditambahkan dan langsung dipilih.");
+      return { id: created.id, name: created.name };
+    } catch (err: any) {
+      alert(err.message || "Gagal menambah pelanggan. Data belum tersimpan.");
+      return null;
+    }
   };
 
   const handleCreateOrder = async (formData: {
@@ -115,6 +139,7 @@ export default function SalesPage() {
       {/* 2. Sales Orders Table */}
       <SalesOrdersTable
         orders={orders}
+        salesTypeLabels={salesTypeLabels}
         onOpenPrintModal={handleOpenPrint}
         onExportCsv={handleExportSales}
       />
@@ -123,6 +148,9 @@ export default function SalesPage() {
       {showCreateModal && (
         <CreateOrderModal
           customers={customers}
+          salesTypes={salesTypes}
+          units={units}
+          onCreateCustomer={handleCreateCustomer}
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateOrder}
         />

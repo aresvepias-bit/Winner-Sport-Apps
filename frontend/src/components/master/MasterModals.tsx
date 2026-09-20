@@ -8,6 +8,8 @@ import EditRawMaterialModal from "@/components/master/EditRawMaterialModal";
 import EditProductModal from "@/components/master/EditProductModal";
 import EditContactModal from "@/components/master/EditContactModal";
 import EditEmployeeModal from "@/components/master/EditEmployeeModal";
+import UnitModal from "@/components/master/UnitModal";
+import SalesTypeModal from "@/components/master/SalesTypeModal";
 import type { EditableEntity } from "@/components/master/masterEntities";
 
 /** Hanya satu modal terbuka pada satu waktu. */
@@ -37,6 +39,10 @@ export default function MasterModals({ modal, onClose, onCreate, onUpdate }: Mas
         return <CreateContactModal onClose={onClose} onSubmit={submit} />;
       case "employees":
         return <CreateEmployeeModal onClose={onClose} onSubmit={submit} />;
+      case "units":
+        return <UnitModal onClose={onClose} onSubmit={submit} />;
+      case "salesTypes":
+        return <SalesTypeModal onClose={onClose} onSubmit={submit} />;
     }
   }
 
@@ -50,5 +56,9 @@ export default function MasterModals({ modal, onClose, onCreate, onUpdate }: Mas
       return <EditContactModal contact={modal.item} onClose={onClose} onSubmit={submit} />;
     case "employees":
       return <EditEmployeeModal employee={modal.item} onClose={onClose} onSubmit={submit} />;
+    case "units":
+      return <UnitModal unit={modal.item} onClose={onClose} onSubmit={(d) => submit(modal.item.id, d)} />;
+    case "salesTypes":
+      return <SalesTypeModal salesType={modal.item} onClose={onClose} onSubmit={(d) => submit(modal.item.id, d)} />;
   }
 }

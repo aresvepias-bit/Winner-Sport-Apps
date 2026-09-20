@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const masterController = require('../controllers/masterController');
+const lookup = require('../controllers/masterLookupController');
 const { verifyToken, checkRole } = require('../api/authMiddleware');
 
 // Semua endpoint wajib login. Baca (GET) terbuka untuk semua role karena dipakai form modul lain
@@ -14,8 +15,16 @@ router.use((req, res, next) =>
 // 1. Kategori & Satuan
 router.get('/categories', masterController.getCategories);
 router.post('/categories', masterController.createCategory);
-router.get('/units', masterController.getUnits);
-router.post('/units', masterController.createUnit);
+router.get('/units', lookup.getUnits);
+router.post('/units', lookup.createUnit);
+router.put('/units/:id', lookup.updateUnit);
+router.delete('/units/:id', lookup.deleteUnit);
+
+// 1b. Tipe Penjualan (dipakai form Order Penjualan)
+router.get('/sales-types', lookup.getSalesTypes);
+router.post('/sales-types', lookup.createSalesType);
+router.put('/sales-types/:id', lookup.updateSalesType);
+router.delete('/sales-types/:id', lookup.deleteSalesType);
 
 // 2. Bahan Baku (Raw Materials)
 router.get('/raw-materials', masterController.getRawMaterials);

@@ -4,6 +4,8 @@ import { useState } from "react";
 import NumberInput from "@/components/common/NumberInput";
 
 interface CreateContactModalProps {
+  /** Tipe awal saat dibuka dari konteks tertentu, mis. CUSTOMER dari form order. */
+  defaultType?: string;
   onClose: () => void;
   onSubmit: (data: {
     name: string;
@@ -15,10 +17,10 @@ interface CreateContactModalProps {
   }) => Promise<void>;
 }
 
-export default function CreateContactModal({ onClose, onSubmit }: CreateContactModalProps) {
+export default function CreateContactModal({ defaultType = "SUPPLIER", onClose, onSubmit }: CreateContactModalProps) {
   const [form, setForm] = useState({
     name: "",
-    type: "SUPPLIER",
+    type: defaultType,
     phone: "",
     address: "",
     companyName: "",

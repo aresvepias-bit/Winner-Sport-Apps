@@ -1,8 +1,8 @@
 "use client";
 
-import { Package, Layers, Scissors, Users } from "lucide-react";
+import { Package, Layers, Scissors, Users , Ruler, Tags} from "lucide-react";
 
-export type MasterTabType = "materials" | "products" | "boms" | "contacts" | "employees";
+export type MasterTabType = "materials" | "products" | "boms" | "contacts" | "employees" | "units" | "salesTypes";
 
 interface MasterNavTabsProps {
   activeTab: MasterTabType;
@@ -15,6 +15,8 @@ const TABS: Array<{ key: MasterTabType; label: string; icon: React.ComponentType
   { key: "boms", label: "BOM (Formula Resep)", icon: Scissors },
   { key: "contacts", label: "Supplier & Customer", icon: Users },
   { key: "employees", label: "Penjahit & Karyawan", icon: Users },
+  { key: "units", label: "Satuan", icon: Ruler },
+  { key: "salesTypes", label: "Tipe Penjualan", icon: Tags },
 ];
 
 export default function MasterNavTabs({ activeTab, onTabChange }: MasterNavTabsProps) {

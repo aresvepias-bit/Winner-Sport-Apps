@@ -76,6 +76,20 @@ function makeModel(name, seed = []) {
       Object.assign(row, flatten(data));
       return project(row, select);
     },
+    async delete({ where } = {}) {
+      const i = rows.findIndex((r) => matches(r, where));
+      if (i === -1) {
+        const err = new Error(`${name}: baris tidak ditemukan untuk delete`);
+        err.code = 'P2025';
+        throw err;
+      }
+      return rows.splice(i, 1)[0];
+    },
+    async deleteMany({ where } = {}) {
+      const hapus = rows.filter((r) => matches(r, where));
+      for (const r of hapus) rows.splice(rows.indexOf(r), 1);
+      return { count: hapus.length };
+    },
     async count({ where } = {}) {
       return rows.filter((r) => matches(r, where)).length;
     }
@@ -86,7 +100,7 @@ const MODELS = [
   'user', 'rawMaterial', 'product', 'category', 'unit', 'contact', 'employee', 'bom', 'bomItem',
   'workOrder', 'workOrderMaterial', 'salesOrder', 'salesOrderItem', 'invoice', 'payment',
   'purchaseOrder', 'purchaseOrderItem', 'stockMovement', 'stockOpname', 'stockOpnameItem',
-  'account', 'expense', 'journalEntry', 'journalItem', 'rolePermission'
+  'account', 'expense', 'journalEntry', 'journalItem', 'rolePermission', 'salesType'
 ];
 
 /**
