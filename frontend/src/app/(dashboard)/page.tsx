@@ -55,7 +55,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* 1. Header */}
-      <DashboardHeader loading={loading} onRefresh={refreshAll} />
+      <DashboardHeader />
 
       <ErrorBanner message={loadError} onRetry={refreshAll} />
 
