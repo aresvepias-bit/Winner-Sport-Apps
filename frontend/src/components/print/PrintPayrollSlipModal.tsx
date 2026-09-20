@@ -2,6 +2,7 @@
 
 import { Printer, X } from "lucide-react";
 import { formatRupiah, formatDate } from "@/lib/utils";
+import CompanyContact from "@/components/print/CompanyContact";
 
 interface PrintPayrollSlipModalProps {
   tailor: {
@@ -55,6 +56,7 @@ export default function PrintPayrollSlipModal({ tailor, onClose }: PrintPayrollS
               <div>
                 <h1 className="text-base font-black text-red-600">THE WINNER SPORT</h1>
                 <p className="text-[10px] text-slate-500">Bukti Pembayaran Upah Tenaga Kerja Borongan</p>
+                <CompanyContact variant="compact" />
               </div>
             </div>
             <div className="text-right">

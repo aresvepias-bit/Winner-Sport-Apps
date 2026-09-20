@@ -2,6 +2,7 @@
 
 import { Printer, X } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import CompanyContact from "@/components/print/CompanyContact";
 
 interface PrintSpkModalProps {
   workOrder: {
@@ -65,6 +66,7 @@ export default function PrintSpkModal({ workOrder, onClose }: PrintSpkModalProps
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   Workshop Produksi &bull; Spesialis Jersey Custom, Kaos Distro, Kodian &amp; Seragam Olahraga
                 </p>
+                <CompanyContact />
               </div>
             </div>
             <div className="text-right">

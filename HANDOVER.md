@@ -230,6 +230,15 @@ Menghapus akun = **menonaktifkan** (`isActive: false`), bukan hapus baris, karen
 
 ---
 
+## 🖨️ Dokumen Cetak
+
+- Identitas perusahaan (nama, alamat, telepon) ada di **`frontend/src/lib/companyInfo.ts`** — satu sumber untuk semua cetakan. Ubah di sana, ketiga dokumen ikut berubah.
+- Ditampilkan lewat komponen `components/print/CompanyContact.tsx` (`variant="compact"` untuk dokumen ringkas).
+- Dokumen yang ada: **Faktur Penjualan**, **SPK Produksi**, **Slip Upah**. Purchase Order belum punya cetakan sama sekali.
+- Mencetak memakai `window.print()` dengan varian `print:` dari Tailwind; tidak ada berkas CSS cetak terpisah.
+
+---
+
 ## 🗂️ Master Satuan & Tipe Penjualan
 
 - **Satuan** (`Master > Satuan`) sudah ada sejak awal di tabel `Unit`, kini bisa dikelola dari UI. Kolom **Isi Satuan (`ratioToPcs`)** menentukan konversi ke pcs dan **memengaruhi HPP serta pengurangan stok** — Kodi 20, Lusin 12, sisanya 1.

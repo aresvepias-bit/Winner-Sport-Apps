@@ -2,6 +2,7 @@
 
 import { Printer, X } from "lucide-react";
 import { formatRupiah, formatDate } from "@/lib/utils";
+import CompanyContact from "@/components/print/CompanyContact";
 
 interface PrintInvoiceModalProps {
   order: {
@@ -73,6 +74,7 @@ export default function PrintInvoiceModal({ order, onClose }: PrintInvoiceModalP
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   Spesialis Jersey Printing, Kodian, Grosir, Celana Training &amp; Kaos Distro
                 </p>
+                <CompanyContact />
               </div>
             </div>
             <div className="text-right">
