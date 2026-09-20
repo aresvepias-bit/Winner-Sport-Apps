@@ -16,7 +16,7 @@ import {
   ChevronRight,
   LogOut,
   Building2,
-  ShieldCheck,
+  Users,
   type LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -69,6 +69,7 @@ const allMenuGroups: MenuGroup[] = [
     title: "MASTER & KONFIGURASI",
     items: [
       { name: "Master Data", href: "/master", icon: Layers },
+      { name: "Pengguna & Hak Akses", href: "/users", icon: Users },
     ],
   },
 ];
@@ -84,32 +85,12 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
   const pathname = usePathname();
   const isActuallyOpen = isMobile ? true : isOpen;
 
-  // Role asli dari server (diverifikasi guard di layout). Pratinjau hanya berlaku untuk OWNER dan
-  // hanya mengubah menu yang tampil; hak akses sebenarnya tetap ditentukan role asli di backend.
+  // Menu mengikuti daftar modul dari server (lihat lib/session.ts & routeAccess.ts),
+  // jadi perubahan di menu Pengguna & Hak Akses langsung tercermin di sini.
   const [userName] = useState(() => getStoredUser()?.name || "");
-  const [realRole] = useState(() => getStoredUser()?.role || "");
-  const [previewRole, setPreviewRole] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem("winner_preview_role");
-    } catch {
-      return null;
-    }
-  });
-  const [showRoleSelector, setShowRoleSelector] = useState(false);
-  const isOwner = realRole === "OWNER";
-  const userRole = (isOwner && previewRole) || realRole;
-  const { items: lowStockItems } = useLowStock(canAccess(realRole, "/inventory"));
-
-  const handleSwitchRole = (newRole: string) => {
-    if (newRole === "OWNER") {
-      setPreviewRole(null);
-      localStorage.removeItem("winner_preview_role");
-    } else {
-      setPreviewRole(newRole);
-      localStorage.setItem("winner_preview_role", newRole);
-    }
-    setShowRoleSelector(false);
-  };
+  const [userRole] = useState(() => getStoredUser()?.role || "");
+  const [modules] = useState<string[]>(() => getStoredUser()?.modules || []);
+  const { items: lowStockItems } = useLowStock(canAccess(modules, "/inventory"));
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(/\s+/);
@@ -122,13 +103,12 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
   const handleLogout = () => {
     localStorage.removeItem("winner_token");
     localStorage.removeItem("winner_user");
-    localStorage.removeItem("winner_preview_role");
     window.location.href = "/login";
   };
 
-  // Filter menus based on active role
+  // Filter menus berdasarkan modul yang diizinkan untuk pengguna ini
   const filteredMenuGroups = allMenuGroups
-    .map((g) => ({ ...g, items: g.items.filter((i) => canAccess(userRole, i.href)) }))
+    .map((g) => ({ ...g, items: g.items.filter((i) => canAccess(modules, i.href)) }))
     .filter((g) => g.items.length > 0);
 
   return (
@@ -233,33 +213,6 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
 
       {/* User Footer GLC Style with RBAC Role Switcher */}
       <div className={cn("border-t border-slate-100 dark:border-[#1a2236] bg-slate-50 dark:bg-[#090e1a] relative", isActuallyOpen ? "p-4 space-y-3" : "p-3 flex flex-col items-center")}>
-        {/* Role Selector Popup */}
-        {isOwner && showRoleSelector && isActuallyOpen && (
-          <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-3 shadow-2xl space-y-2 z-50 text-xs">
-            <div className="flex items-center gap-1.5 text-slate-500 font-bold text-[10px] uppercase">
-              <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
-              <span>Lihat menu sebagai (pratinjau)</span>
-            </div>
-            <div className="space-y-1">
-              {["OWNER", "ADMIN", "PRODUCTION", "WAREHOUSE", "SALES", "ACCOUNTING"].map((r) => (
-                <button
-                  key={r}
-                  onClick={() => handleSwitchRole(r)}
-                  className={cn(
-                    "w-full text-left px-2.5 py-1.5 rounded-lg font-bold text-[11px] transition-colors cursor-pointer flex items-center justify-between",
-                    userRole === r
-                      ? "bg-red-50 dark:bg-red-500/15 text-red-600 dark:text-red-400"
-                      : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                  )}
-                >
-                  <span>{r}</span>
-                  {userRole === r && <span className="w-1.5 h-1.5 rounded-full bg-red-600" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div 
           className={cn(
             "flex items-center justify-between w-full p-2 rounded-xl bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] transition-all duration-200 shadow-2xs", 
@@ -267,9 +220,7 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
           )}
         >
           <div
-            onClick={() => isOwner && isActuallyOpen && setShowRoleSelector(!showRoleSelector)}
-            className="flex items-center gap-2.5 overflow-hidden cursor-pointer"
-            title={isOwner ? "Klik untuk pratinjau menu peran lain" : undefined}
+            className="flex items-center gap-2.5 overflow-hidden"
           >
             <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-blue-600/20 shrink-0">
               {getInitials(userName)}
@@ -279,11 +230,6 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
                 <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate leading-none" title={userName}>{userName}</p>
                 <div className="flex items-center gap-1 mt-1">
                   <span className="text-[9px] text-red-600 dark:text-red-400 font-black uppercase tracking-wider">{userRole}</span>
-                  {isOwner && (
-                    <span className="text-[9px] text-slate-400">
-                      &bull; {previewRole ? "Pratinjau" : "Ganti"}
-                    </span>
-                  )}
                 </div>
               </div>
             )}

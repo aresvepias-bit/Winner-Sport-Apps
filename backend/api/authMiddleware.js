@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('./db');
+const rolePolicy = require('./rolePolicy');
 
 // Secret lama pernah ter-commit ke git, jadi dianggap bocor dan ditolak.
 const LEAKED_DEFAULT_SECRET = 'winner_sport_jwt_secret_konveksi_2026';
@@ -47,17 +48,27 @@ const verifyToken = async (req, res, next) => {
 };
 
 /**
- * Middleware: batasi akses berdasarkan role (nama role = enum Role di schema.prisma).
+ * Middleware: batasi akses berdasarkan modul (lihat api/rolePolicy.js).
+ * Daftar role dibaca saat request, bukan saat file dimuat, supaya perubahan
+ * hak akses langsung berlaku tanpa restart server.
  * OWNER selalu lolos. Harus dipasang setelah verifyToken.
  */
-const checkRole = (allowedRoles) => (req, res, next) => {
+const checkRole = (moduleName) => async (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized. Session not found.' });
   }
-  if (req.user.role !== 'OWNER' && !allowedRoles.includes(req.user.role)) {
-    return res.status(403).json({ error: 'Akses ditolak. Role Anda tidak memiliki izin untuk fitur ini.' });
+  if (req.user.role === 'OWNER') return next();
+
+  try {
+    const allowedRoles = await rolePolicy.getAllowedRoles(moduleName);
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Akses ditolak. Role Anda tidak memiliki izin untuk fitur ini.' });
+    }
+    next();
+  } catch (err) {
+    console.error('[checkRole error]:', err);
+    res.status(500).json({ error: 'Gagal memeriksa hak akses.' });
   }
-  next();
 };
 
 module.exports = {

@@ -55,6 +55,7 @@ app.use('/api/sales', require('../routes/salesRouter'));
 app.use('/api/purchasing', require('../routes/purchaseRouter'));
 app.use('/api/accounting', require('../routes/accountingRouter'));
 app.use('/api/dashboard', require('../routes/dashboardRouter'));
+app.use('/api/users', require('../routes/userRouter'));
 
 // Global Error Handler
 app.use((err, req, res, next) => {

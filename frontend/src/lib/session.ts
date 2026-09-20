@@ -10,6 +10,8 @@ export interface SessionUser {
   name?: string;
   email?: string;
   role?: string;
+  /** Modul yang boleh diakses, dikirim server lewat /auth/me. */
+  modules?: string[];
 }
 
 export function getStoredUser(): SessionUser | null {
@@ -26,14 +28,15 @@ export type GuardStatus = "checking" | "ok" | "redirecting" | "forbidden";
 /**
  * Guard halaman dashboard:
  * - tanpa token -> /login
- * - role diverifikasi ke /auth/me (bukan hanya percaya localStorage) dan disimpan kembali
- * - halaman yang tidak diizinkan untuk role tsb -> dialihkan ke halaman pertama yang boleh
- * Backend tetap penentu akhir hak akses; guard ini hanya untuk UX.
+ * - role & daftar modul diambil dari /auth/me (bukan sekadar percaya localStorage),
+ *   sehingga perubahan hak akses berlaku pada muat halaman berikutnya
+ * - halaman yang tidak diizinkan -> dialihkan ke halaman pertama yang boleh
+ * Backend tetap penentu akhir; guard ini hanya untuk UX.
  */
-export function useAuthGuard(): { status: GuardStatus; role?: string } {
+export function useAuthGuard(): { status: GuardStatus; role?: string; modules?: string[] } {
   const pathname = usePathname();
   const router = useRouter();
-  const [role, setRole] = useState<string | undefined>(undefined);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
@@ -43,20 +46,20 @@ export function useAuthGuard(): { status: GuardStatus; role?: string } {
         window.location.href = "/login";
         return;
       }
-      let user = getStoredUser();
+      let current = getStoredUser();
       try {
         const me = await api.get("/auth/me");
-        user = { ...user, id: me.id, name: me.name, email: me.email, role: me.role };
-        localStorage.setItem("winner_user", JSON.stringify(user));
+        current = { id: me.id, name: me.name, email: me.email, role: me.role, modules: me.modules || [] };
+        localStorage.setItem("winner_user", JSON.stringify(current));
       } catch {
         // 401 sudah ditangani api.ts (logout). Gangguan jaringan: pakai data tersimpan.
       }
       if (cancelled) return;
-      if (!user?.role) {
+      if (!current?.role) {
         window.location.href = "/login";
         return;
       }
-      setRole(user.role);
+      setUser(current);
       setChecked(true);
     })();
     return () => {
@@ -64,14 +67,15 @@ export function useAuthGuard(): { status: GuardStatus; role?: string } {
     };
   }, []);
 
-  const allowed = checked && canAccess(role, pathname);
-  const home = checked ? homeFor(role) : null;
+  const modules = user?.modules;
+  const allowed = checked && canAccess(modules, pathname);
+  const home = checked ? homeFor(modules) : null;
 
   useEffect(() => {
     if (checked && !allowed && home) router.replace(home);
   }, [checked, allowed, home, router]);
 
   if (!checked) return { status: "checking" };
-  if (allowed) return { status: "ok", role };
-  return { status: home ? "redirecting" : "forbidden", role };
+  if (allowed) return { status: "ok", role: user?.role, modules };
+  return { status: home ? "redirecting" : "forbidden", role: user?.role, modules };
 }

@@ -177,12 +177,35 @@ cd backend; node api/index.js
 
 - Semua endpoint `/api/*` (kecuali `POST /api/auth/login`) **wajib** header `Authorization: Bearer <JWT>`. Tanpa token / token demo / token salah → `401`.
 - `verifyToken` mengecek user ke DB tiap request (akun nonaktif & perubahan role langsung berlaku).
-- Role = enum `Role` di `schema.prisma`: `OWNER, ADMIN, WAREHOUSE, PRODUCTION, SALES, ACCOUNTING`. OWNER selalu lolos.
-- Kebijakan per modul ada di `backend/api/rolePolicy.js` (mengikuti menu di `sidebar.tsx`). Master data: baca untuk semua role yang login, tulis hanya ADMIN/PRODUCTION; data karyawan hanya ADMIN/PRODUCTION.
+- Role = enum `Role` di `schema.prisma`: `OWNER, ADMIN, WAREHOUSE, PRODUCTION, SALES, ACCOUNTING`. **OWNER selalu lolos** dan tidak bisa dibatasi — ini yang menjaga sistem tidak bisa terkunci.
 - Backend **menolak start** bila `JWT_SECRET` kosong atau sama dengan default lama (default lama sudah ter-commit → dianggap bocor).
-- **Frontend:** `frontend/src/lib/routeAccess.ts` = daftar role per halaman (cermin `rolePolicy.js`; ubah keduanya bersamaan). Dipakai sidebar (menu per item) dan `useAuthGuard` di `lib/session.ts`.
-- Guard di `(dashboard)/layout.tsx`: tanpa token → `/login`; role diverifikasi ke `/auth/me` tiap load halaman penuh (bukan cuma percaya localStorage); halaman terlarang → dialihkan ke halaman pertama yang boleh (`homeFor`); role tanpa halaman sama sekali → layar "Akses ditolak".
-- Pengganti role di sidebar kini hanya untuk **OWNER** dan berupa pratinjau menu (`winner_preview_role`); tidak mengubah akses. Hak akses sebenarnya = role di database.
+
+### Sumber hak akses
+- Tabel **`RolePermission`** (role + module + allowed) = sumber utama, diubah lewat menu Pengguna & Hak Akses.
+- `backend/api/rolePolicy.js` memegang **DEFAULT_POLICY** (dipakai untuk modul yang belum punya baris di DB, atau bila DB gagal dibaca) dan cache. Cache di-*invalidate* tiap penyimpanan, jadi **perubahan langsung berlaku tanpa restart**.
+- `checkRole('NAMA_MODUL')` membaca daftar role **saat request**, bukan saat file dimuat.
+- Modul: `DASHBOARD, PRODUCTION, SALES, INVENTORY, PURCHASING, ACCOUNTING, MASTER_WRITE, MASTER_EMPLOYEES` (bisa diatur) + `USER_ADMIN` (**dikunci** ke OWNER+ADMIN, sengaja tidak bisa diubah agar ADMIN tidak bisa mengunci dirinya sendiri).
+- **Frontend**: `GET /api/auth/me` mengirim `modules` milik pengguna. `frontend/src/lib/routeAccess.ts` hanya memetakan halaman → nama modul; daftar role tidak lagi disalin di frontend.
+- Guard di `(dashboard)/layout.tsx`: tanpa token → `/login`; halaman terlarang → dialihkan ke halaman pertama yang boleh; tanpa modul sama sekali → layar "Akses ditolak".
+
+## 👥 Menu Pengguna & Hak Akses (`/users`)
+
+Hanya untuk **OWNER dan ADMIN**. Dua tab:
+1. **Akun Pengguna** — tambah akun, ubah data/peran, ganti password, aktif/nonaktifkan.
+2. **Matriks Hak Akses** — centang modul per peran, simpan, langsung berlaku.
+
+Pengaman yang berlaku di backend (bukan sekadar disembunyikan di UI):
+
+| Aturan | Alasan |
+|---|---|
+| ADMIN tidak bisa memberi peran OWNER | mencegah ADMIN menaikkan hak aksesnya sendiri |
+| ADMIN tidak bisa mengubah/menonaktifkan/reset password akun OWNER | melindungi akun tertinggi |
+| Tidak bisa menonaktifkan, menghapus, atau mengubah peran akun sendiri | mencegah terkunci |
+| OWNER aktif terakhir tidak bisa dinonaktifkan/diturunkan | selalu ada pemegang akses penuh |
+| ADMIN tidak bisa mencabut izin perannya sendiri | mencegah ADMIN mengunci semua ADMIN |
+| Baris OWNER & modul `USER_ADMIN` tidak ada di matriks | jalan keluar terakhir harus selalu terbuka |
+
+Menghapus akun = **menonaktifkan** (`isActive: false`), bukan hapus baris, karena akun masih dirujuk SPK/SO/PO sebagai pembuat.
 
 ## 🧭 Perilaku Data di Frontend
 
@@ -193,7 +216,8 @@ cd backend; node api/index.js
 
 ## 🚧 Potential Next Steps
 
-- [x] Role-based access control di backend
+- [x] Role-based access control di backend (kini bisa diatur dari UI)
+- [x] Menu Pengguna & Hak Akses (kelola akun + matriks izin)
 - [x] Export CSV (Sales, PO, SPK, Stok Bahan/Produk, Mutasi, Akuntansi) — belum ada di halaman Master
 - [x] Alert stok minimum (banner dashboard + badge sidebar)
 - [x] Pagination tabel daftar (sisi klien, 10 baris/halaman; mutasi stok 15). Catatan: `/inventory/movements` dibatasi 100 baris oleh backend
@@ -224,7 +248,7 @@ npm test          # node --test, tanpa database & tanpa dependensi baru
 
 1. **Jangan hapus** `frontend/public/logo.png` dan `logo-emblem.png` — dipakai sidebar & login page
 2. **Backend harus jalan dulu** sebelum frontend bisa fetch data
-3. **Prisma schema** → `backend/prisma/schema.prisma` — jika ubah schema: `npx prisma migrate dev`
+3. **Prisma schema** → `backend/prisma/schema.prisma`. Proyek ini **tidak memakai folder migrations**; perubahan skema didorong dengan `npx prisma db push` lalu `npx prisma generate`. Sebelum push, periksa SQL-nya dulu: `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`
 4. **Env file** → `backend/.env` *(tidak di-push)* — isi: `DATABASE_URL` Supabase + `JWT_SECRET` **acak baru** (buat: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`)
 5. **Peringatan `pg` saat backend start** (`client.query() ... already executing a query`) berasal dari `backend/api/db.js` baris 16-19: handler event `connect` memanggil `client.query('SET search_path ...')` tanpa `await`. Belum diperbaiki — menyentuh `search_path` berisiko, sebaiknya ditangani terpisah sebelum upgrade ke `pg@9`.
 6. **Seed** (`backend/scripts/seed.js`) tidak lagi memakai password tetap: pakai env `SEED_PASSWORD` atau buat acak dan tampilkan sekali. User yang sudah ada tidak diubah passwordnya.

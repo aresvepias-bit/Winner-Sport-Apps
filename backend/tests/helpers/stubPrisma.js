@@ -29,6 +29,13 @@ function flatten(data) {
   return out;
 }
 
+/** Meniru `select` Prisma: hanya kolom bernilai true yang dikembalikan. */
+function project(row, select) {
+  if (!row || !select) return row;
+  const keys = Object.entries(select).filter(([, v]) => v).map(([k]) => k);
+  return Object.fromEntries(keys.map((k) => [k, row[k]]));
+}
+
 function makeModel(name, seed = []) {
   // Objek seed dipakai langsung (bukan disalin) agar relasi yang di-seed sebagai
   // referensi — mis. workOrder.product — tetap menunjuk baris yang sama saat di-update.
@@ -36,29 +43,41 @@ function makeModel(name, seed = []) {
   let counter = rows.length;
   return {
     rows,
-    async findMany({ where, take } = {}) {
+    async findMany({ where, take, select } = {}) {
       const found = rows.filter((r) => matches(r, where));
-      return take ? found.slice(0, take) : found;
+      return (take ? found.slice(0, take) : found).map((r) => project(r, select));
     },
-    async findUnique({ where } = {}) {
-      return rows.find((r) => matches(r, where)) || null;
+    async findUnique({ where, select } = {}) {
+      return project(rows.find((r) => matches(r, where)) || null, select);
     },
-    async findFirst({ where } = {}) {
-      return rows.find((r) => matches(r, where)) || null;
+    async findFirst({ where, select } = {}) {
+      return project(rows.find((r) => matches(r, where)) || null, select);
     },
-    async create({ data } = {}) {
+    async create({ data, select } = {}) {
       const row = { id: `${name}-${++counter}`, ...flatten(data) };
       rows.push(row);
-      return row;
+      return project(row, select);
     },
-    async update({ where, data } = {}) {
+    async upsert({ where, update, create } = {}) {
+      // where majemuk (mis. { role_module: { role, module } }) diratakan dulu
+      const flat = Object.values(where || {}).find((v) => v && typeof v === 'object') || where;
+      const row = rows.find((r) => matches(r, flat));
+      if (row) {
+        Object.assign(row, flatten(update));
+        return row;
+      }
+      const baru = { id: `${name}-${++counter}`, ...flatten(create) };
+      rows.push(baru);
+      return baru;
+    },
+    async update({ where, data, select } = {}) {
       const row = rows.find((r) => matches(r, where));
       if (!row) throw new Error(`${name}: baris tidak ditemukan untuk update`);
       Object.assign(row, flatten(data));
-      return row;
+      return project(row, select);
     },
-    async count() {
-      return rows.length;
+    async count({ where } = {}) {
+      return rows.filter((r) => matches(r, where)).length;
     }
   };
 }
@@ -67,7 +86,7 @@ const MODELS = [
   'user', 'rawMaterial', 'product', 'category', 'unit', 'contact', 'employee', 'bom', 'bomItem',
   'workOrder', 'workOrderMaterial', 'salesOrder', 'salesOrderItem', 'invoice', 'payment',
   'purchaseOrder', 'purchaseOrderItem', 'stockMovement', 'stockOpname', 'stockOpnameItem',
-  'account', 'expense', 'journalEntry', 'journalItem'
+  'account', 'expense', 'journalEntry', 'journalItem', 'rolePermission'
 ];
 
 /**

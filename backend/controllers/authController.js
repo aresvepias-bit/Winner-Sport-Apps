@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../api/db');
 const { JWT_SECRET } = require('../api/authMiddleware');
+const rolePolicy = require('../api/rolePolicy');
 
 /**
  * Controller: Autentikasi Pengguna
@@ -67,7 +68,9 @@ const authController = {
         return res.status(404).json({ error: 'User tidak ditemukan.' });
       }
 
-      res.json(user);
+      // Modul ikut dikirim agar menu & guard halaman di frontend mengikuti
+      // hak akses terbaru, termasuk perubahan dari menu Pengguna & Hak Akses.
+      res.json({ ...user, modules: await rolePolicy.getModulesForRole(user.role) });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

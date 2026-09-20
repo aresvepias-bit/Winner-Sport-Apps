@@ -2,10 +2,9 @@ const express = require('express');
 const router = express.Router();
 const inventoryController = require('../controllers/inventoryController');
 const { verifyToken, checkRole } = require('../api/authMiddleware');
-const policy = require('../api/rolePolicy');
 
 // Semua endpoint wajib login + role sesuai modul
-router.use(verifyToken, checkRole(policy.INVENTORY));
+router.use(verifyToken, checkRole('INVENTORY'));
 
 // Endpoint Inventori Stok, Mutasi & Stock Opname
 router.get('/summary', inventoryController.getSummary);

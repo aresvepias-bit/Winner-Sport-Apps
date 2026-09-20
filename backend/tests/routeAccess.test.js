@@ -2,14 +2,15 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const policy = require('../api/rolePolicy');
+const rolePolicy = require('../api/rolePolicy');
 
 const ROUTE_ACCESS_TS = path.join(__dirname, '../../frontend/src/lib/routeAccess.ts');
 
 /**
- * Menjaga agar daftar role di frontend (routeAccess.ts) tidak melenceng dari rolePolicy.js.
- * Kalau melenceng, menu/halaman akan tampil lalu ditolak backend (atau sebaliknya, tersembunyi
- * padahal boleh). Butuh typescript dari frontend/node_modules; dilewati bila belum ter-install.
+ * Frontend tidak lagi menyimpan daftar role (itu datang dari /auth/me), tetapi masih
+ * memetakan halaman -> nama modul. Nama modul itu harus tetap cocok dengan rolePolicy.js,
+ * kalau tidak, guard halaman akan memeriksa modul yang tidak pernah ada.
+ * Butuh typescript dari frontend/node_modules; dilewati bila belum ter-install.
  */
 function loadRouteAccess() {
   let ts;
@@ -28,57 +29,52 @@ function loadRouteAccess() {
 const frontend = loadRouteAccess();
 const skip = frontend ? false : 'typescript frontend belum ter-install (npm install di folder frontend)';
 
-// Halaman frontend -> kunci kebijakan backend yang menjaga endpoint halaman tersebut.
-const ROUTE_TO_POLICY = {
-  '/': 'DASHBOARD',
-  '/production': 'PRODUCTION',
-  '/sales': 'SALES',
-  '/inventory': 'INVENTORY',
-  '/purchasing': 'PURCHASING',
-  '/accounting': 'ACCOUNTING',
-  '/master': 'MASTER_WRITE'
-};
-
-const ROLES = ['OWNER', 'ADMIN', 'WAREHOUSE', 'PRODUCTION', 'SALES', 'ACCOUNTING'];
-
-describe('routeAccess.ts (frontend) sinkron dengan rolePolicy.js (backend)', { skip }, () => {
-  for (const [route, key] of Object.entries(ROUTE_TO_POLICY)) {
-    test(`${route} sama dengan policy.${key}`, () => {
-      const depan = [...frontend.ROUTE_ROLES[route]].sort();
-      const belakang = [...policy[key]].sort();
-      assert.deepEqual(depan, belakang);
-    });
-  }
-
-  test('tidak ada halaman frontend tanpa padanan kebijakan backend', () => {
-    assert.deepEqual(Object.keys(frontend.ROUTE_ROLES).sort(), Object.keys(ROUTE_TO_POLICY).sort());
-  });
-
-  test('OWNER boleh membuka semua halaman', () => {
-    for (const route of Object.keys(ROUTE_TO_POLICY)) {
-      assert.ok(frontend.canAccess('OWNER', route), `OWNER seharusnya boleh ${route}`);
+describe('routeAccess.ts (frontend) sejalan dengan rolePolicy.js (backend)', { skip }, () => {
+  test('setiap halaman menunjuk modul yang benar-benar ada di backend', () => {
+    for (const [route, mod] of Object.entries(frontend.ROUTE_MODULE)) {
+      assert.ok(rolePolicy.ALL_MODULES.includes(mod), `halaman ${route} menunjuk modul "${mod}" yang tidak dikenal backend`);
     }
   });
 
-  test('setiap role punya halaman awal yang memang boleh dibuka (tidak ada redirect berputar)', () => {
-    for (const role of ROLES) {
-      const home = frontend.homeFor(role);
-      assert.ok(home, `role ${role} tidak punya halaman awal`);
-      assert.ok(frontend.canAccess(role, home), `halaman awal ${home} justru terlarang untuk ${role}`);
+  test('modul yang menjaga halaman punya pemetaan (kecuali yang memang bukan halaman)', () => {
+    // MASTER_EMPLOYEES hanya membatasi endpoint di dalam halaman Master, bukan halaman tersendiri.
+    const bukanHalaman = ['MASTER_EMPLOYEES'];
+    const dipetakan = Object.values(frontend.ROUTE_MODULE);
+    for (const mod of rolePolicy.ALL_MODULES) {
+      if (bukanHalaman.includes(mod)) continue;
+      assert.ok(dipetakan.includes(mod), `modul ${mod} tidak punya halaman di frontend`);
     }
   });
 
-  test('sub-path mengikuti izin halaman induknya', () => {
-    assert.equal(frontend.canAccess('WAREHOUSE', '/inventory/opname'), true);
-    assert.equal(frontend.canAccess('SALES', '/inventory/opname'), false);
+  test('halaman Pengguna & Hak Akses dijaga modul USER_ADMIN', () => {
+    assert.equal(frontend.ROUTE_MODULE['/users'], 'USER_ADMIN');
   });
 
-  test('tanpa role dianggap tidak berhak', () => {
+  test('canAccess mengikuti daftar modul pengguna', () => {
+    assert.equal(frontend.canAccess(['DASHBOARD'], '/'), true);
+    assert.equal(frontend.canAccess(['DASHBOARD'], '/inventory'), false);
+    assert.equal(frontend.canAccess(['INVENTORY'], '/inventory/opname'), true, 'sub-path ikut halaman induk');
+    assert.equal(frontend.canAccess([], '/'), false);
     assert.equal(frontend.canAccess(null, '/'), false);
-    assert.equal(frontend.canAccess(undefined, '/sales'), false);
   });
 
-  test('role yang tidak dikenal tidak punya halaman awal (memicu layar akses ditolak)', () => {
-    assert.equal(frontend.homeFor('ROLE_ASING'), null);
+  test('halaman awal selalu halaman yang boleh dibuka', () => {
+    const contoh = [['DASHBOARD'], ['PRODUCTION', 'INVENTORY'], ['USER_ADMIN'], rolePolicy.ALL_MODULES];
+    for (const modules of contoh) {
+      const home = frontend.homeFor(modules);
+      assert.ok(home, `tidak ada halaman awal untuk ${modules.join(',')}`);
+      assert.equal(frontend.canAccess(modules, home), true);
+    }
+  });
+
+  test('tanpa modul sama sekali tidak ada halaman awal (memicu layar akses ditolak)', () => {
+    assert.equal(frontend.homeFor([]), null);
+  });
+
+  test('OWNER (semua modul) bisa membuka setiap halaman', async () => {
+    const modules = await rolePolicy.getModulesForRole('OWNER');
+    for (const route of Object.keys(frontend.ROUTE_MODULE)) {
+      assert.equal(frontend.canAccess(modules, route), true, `OWNER seharusnya boleh ${route}`);
+    }
   });
 });

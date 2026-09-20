@@ -15,7 +15,7 @@ import { getStoredUser } from "@/lib/session";
 
 export default function DashboardPage() {
   // Alert stok memakai endpoint inventori; role tanpa akses inventori tidak perlu memanggilnya.
-  const { items: lowStockItems, reload: reloadLowStock } = useLowStock(canAccess(getStoredUser()?.role, "/inventory"));
+  const { items: lowStockItems, reload: reloadLowStock } = useLowStock(canAccess(getStoredUser()?.modules, "/inventory"));
   const [loading, setLoading] = useState(true);
   const [hidePrices, setHidePrices] = useState(false);
   const [stats, setStats] = useState<any>(null);

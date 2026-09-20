@@ -2,14 +2,13 @@ const express = require('express');
 const router = express.Router();
 const masterController = require('../controllers/masterController');
 const { verifyToken, checkRole } = require('../api/authMiddleware');
-const policy = require('../api/rolePolicy');
 
 // Semua endpoint wajib login. Baca (GET) terbuka untuk semua role karena dipakai form modul lain
 // (lookup produk, bahan, kontak). Tulis (POST/PUT/DELETE) hanya role master. Data karyawan dibatasi.
 router.use(verifyToken);
-router.use('/employees', checkRole(policy.MASTER_EMPLOYEES));
+router.use('/employees', checkRole('MASTER_EMPLOYEES'));
 router.use((req, res, next) =>
-  req.method === 'GET' ? next() : checkRole(policy.MASTER_WRITE)(req, res, next)
+  req.method === 'GET' ? next() : checkRole('MASTER_WRITE')(req, res, next)
 );
 
 // 1. Kategori & Satuan

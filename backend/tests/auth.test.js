@@ -86,8 +86,9 @@ describe('verifyToken', () => {
   });
 });
 
-describe('checkRole', () => {
-  const mw = checkRole(['ADMIN', 'SALES']);
+describe('checkRole (daftar role dibaca saat request, dari rolePolicy)', () => {
+  // SALES ada di default policy modul SALES; WAREHOUSE tidak.
+  const mw = checkRole('SALES');
 
   test('OWNER selalu lolos meski tidak ada di daftar', async () => {
     const { nextCalled } = await run(mw, mockReq({ user: { id: 'u', role: 'OWNER' } }));

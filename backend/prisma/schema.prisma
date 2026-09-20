@@ -44,6 +44,20 @@ model User {
   @@schema("winner_sport")
 }
 
+/// Hak akses per role & modul, bisa diubah dari menu Pengguna & Hak Akses.
+/// Baris yang belum ada = memakai default di api/rolePolicy.js.
+/// OWNER sengaja tidak disimpan di sini: selalu punya akses penuh agar tidak bisa terkunci.
+model RolePermission {
+  id        String   @id @default(cuid())
+  role      Role
+  module    String // DASHBOARD, PRODUCTION, SALES, INVENTORY, PURCHASING, ACCOUNTING, MASTER_WRITE, MASTER_EMPLOYEES
+  allowed   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([role, module])
+  @@schema("winner_sport")
+}
+
 // -----------------------------------------------------------------------------
 // 2. MASTER DATA (KATEGORI, SATUAN, KONTAK, KARYAWAN)
 // -----------------------------------------------------------------------------
