@@ -19,6 +19,7 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLowStock } from "@/lib/useLowStock";
 
 const allMenuGroups = [
   {
@@ -31,7 +32,7 @@ const allMenuGroups = [
   },
   {
     title: "MANUFAKTUR & PRODUKSI",
-    roles: ["OWNER", "ADMIN", "PRODUKSI", "GUDANG"],
+    roles: ["OWNER", "ADMIN", "PRODUCTION", "WAREHOUSE"],
     items: [
       { name: "SPK (Work Order)", href: "/production", icon: Scissors, badge: "PROD", badgeColor: "bg-blue-600 text-white" },
     ],
@@ -45,7 +46,7 @@ const allMenuGroups = [
   },
   {
     title: "LOGISTIK & INVENTORI",
-    roles: ["OWNER", "ADMIN", "GUDANG", "PRODUKSI"],
+    roles: ["OWNER", "ADMIN", "WAREHOUSE", "PRODUCTION"],
     items: [
       { name: "Persediaan & Stok", href: "/inventory", icon: Package },
       { name: "Order Bahan (PO)", href: "/purchasing", icon: Truck },
@@ -53,7 +54,7 @@ const allMenuGroups = [
   },
   {
     title: "MASTER & KONFIGURASI",
-    roles: ["OWNER", "ADMIN", "PRODUKSI"],
+    roles: ["OWNER", "ADMIN", "PRODUCTION"],
     items: [
       { name: "Master Data", href: "/master", icon: Layers },
     ],
@@ -74,6 +75,7 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
   const [userName, setUserName] = useState("Aris Setiyono");
   const [userRole, setUserRole] = useState("OWNER");
   const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const { items: lowStockItems } = useLowStock();
 
   useEffect(() => {
     const savedUser = localStorage.getItem("winner_user");
@@ -172,6 +174,9 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
               {group.items.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
+                const isInventory = item.href === "/inventory";
+                const badge = isInventory && lowStockItems.length > 0 ? String(lowStockItems.length) : item.badge;
+                const badgeColor = isInventory && lowStockItems.length > 0 ? "bg-rose-600 text-white" : item.badgeColor;
 
                 return (
                   <Link
@@ -198,12 +203,12 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
                       />
                       {isActuallyOpen && <span className="text-xs font-semibold tracking-tight">{item.name}</span>}
                     </div>
-                    {isActuallyOpen && item.badge && !isActive && (
+                    {isActuallyOpen && badge && !isActive && (
                       <span className={cn(
                         "text-[8px] font-black px-1.5 py-0.5 rounded-full shrink-0 shadow-xs",
-                        item.badgeColor
+                        badgeColor
                       )}>
-                        {item.badge}
+                        {badge}
                       </span>
                     )}
                     {isActuallyOpen && isActive && <ChevronRight className="w-3.5 h-3.5 text-red-500 opacity-80" />}
@@ -225,7 +230,7 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
               <span>Ganti Peran Hak Akses (RBAC)</span>
             </div>
             <div className="space-y-1">
-              {["OWNER", "ADMIN", "PRODUKSI", "GUDANG", "SALES", "ACCOUNTING"].map((r) => (
+              {["OWNER", "ADMIN", "PRODUCTION", "WAREHOUSE", "SALES", "ACCOUNTING"].map((r) => (
                 <button
                   key={r}
                   onClick={() => handleSwitchRole(r)}

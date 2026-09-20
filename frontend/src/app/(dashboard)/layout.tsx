@@ -16,6 +16,16 @@ export default function DashboardLayout({
   const [theme, setTheme] = useState("light");
   const [timeString, setTimeString] = useState("");
   const [dateString, setDateString] = useState("");
+  const [authed, setAuthed] = useState(false);
+
+  // Route guard: tanpa token, kembali ke halaman login.
+  useEffect(() => {
+    if (!localStorage.getItem("winner_token")) {
+      window.location.href = "/login";
+    } else {
+      setAuthed(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Read theme state
@@ -70,6 +80,8 @@ export default function DashboardLayout({
     localStorage.setItem("hide-prices", String(nextVal));
     window.dispatchEvent(new Event("storage"));
   };
+
+  if (!authed) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-slate-100 flex transition-colors duration-200">

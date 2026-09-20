@@ -25,18 +25,11 @@ export default function LoginPage() {
         throw new Error("Respon server tidak valid.");
       }
     } catch (err: any) {
-      console.warn("API login failed, falling back to local session for demo:", err);
-      localStorage.setItem("winner_token", "demo_token_winner_sport_2026");
-      localStorage.setItem(
-        "winner_user",
-        JSON.stringify({
-          id: "demo-owner",
-          name: email.includes("admin") ? "Staff Admin" : "Aris Setiyono (Owner)",
-          email,
-          role: email.includes("admin") ? "ADMIN" : "OWNER",
-        })
+      setError(
+        err instanceof TypeError
+          ? "Tidak dapat terhubung ke server. Pastikan backend sudah berjalan."
+          : err.message || "Login gagal."
       );
-      window.location.href = "/";
     } finally {
       setLoading(false);
     }

@@ -1,73 +1,63 @@
 const jwt = require('jsonwebtoken');
+const prisma = require('./db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'winner_sport_jwt_secret_konveksi_2026';
+// Secret lama pernah ter-commit ke git, jadi dianggap bocor dan ditolak.
+const LEAKED_DEFAULT_SECRET = 'winner_sport_jwt_secret_konveksi_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-// Default Owner User ID in Supabase Database for seamless dev/fallback authentication
-const DEFAULT_OWNER_ID = 'cmu892aae00008wcyifyktrgl';
+if (!JWT_SECRET || JWT_SECRET === LEAKED_DEFAULT_SECRET) {
+  throw new Error(
+    'JWT_SECRET wajib diisi di backend/.env dengan nilai acak baru (bukan default lama). ' +
+    'Buat dengan: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"'
+  );
+}
 
 /**
- * Middleware untuk memverifikasi JWT token dari header Authorization
+ * Middleware: wajib token JWT valid (Authorization: Bearer <token>).
+ * User dicek ulang ke database agar akun nonaktif / perubahan role langsung berlaku,
+ * bukan menunggu token kedaluwarsa.
  */
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-
-  if (!authHeader) {
-    // Fallback seamless session untuk operasional dev
-    req.user = {
-      id: DEFAULT_OWNER_ID,
-      email: 'owner@winnersport.com',
-      role: 'OWNER',
-      name: 'Aris Setiyono (Owner)'
-    };
-    return next();
+const verifyToken = async (req, res, next) => {
+  const [scheme, token] = (req.headers['authorization'] || '').split(' ');
+  if (scheme !== 'Bearer' || !token) {
+    return res.status(401).json({ error: 'Unauthorized. Silakan login terlebih dahulu.' });
   }
 
-  const parts = authHeader.split(' ');
-  const token = parts.length === 2 ? parts[1] : authHeader;
-
-  if (token === 'demo_token_winner_sport_2026' || token.startsWith('demo_')) {
-    req.user = {
-      id: DEFAULT_OWNER_ID,
-      email: 'owner@winnersport.com',
-      role: 'OWNER',
-      name: 'Aris Setiyono (Owner)'
-    };
-    return next();
+  let decoded;
+  try {
+    decoded = jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ error: 'Sesi tidak valid atau sudah kedaluwarsa. Silakan login ulang.' });
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { id, email, role, name }
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, email: true, name: true, role: true, isActive: true }
+    });
+    if (!user || !user.isActive) {
+      return res.status(401).json({ error: 'Akun tidak ditemukan atau nonaktif.' });
+    }
+    req.user = user;
     next();
   } catch (err) {
-    // Fallback ke default owner jika token expired/invalid
-    req.user = {
-      id: DEFAULT_OWNER_ID,
-      email: 'owner@winnersport.com',
-      role: 'OWNER',
-      name: 'Aris Setiyono (Owner)'
-    };
-    next();
+    console.error('[verifyToken error]:', err);
+    res.status(500).json({ error: 'Gagal memverifikasi sesi.' });
   }
 };
 
 /**
- * Middleware untuk membatasi akses berdasarkan role pengguna
+ * Middleware: batasi akses berdasarkan role (nama role = enum Role di schema.prisma).
+ * OWNER selalu lolos. Harus dipasang setelah verifyToken.
  */
-const checkRole = (allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized. Session not found.' });
-    }
-
-    const userRole = req.user.role ? req.user.role.toUpperCase() : 'OWNER';
-    const rolesUpper = allowedRoles.map(r => r.toUpperCase());
-
-    if (!rolesUpper.includes(userRole) && userRole !== 'OWNER') {
-      return res.status(403).json({ error: 'Access forbidden. Insufficient permissions.' });
-    }
-    next();
-  };
+const checkRole = (allowedRoles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized. Session not found.' });
+  }
+  if (req.user.role !== 'OWNER' && !allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Akses ditolak. Role Anda tidak memiliki izin untuk fitur ini.' });
+  }
+  next();
 };
 
 module.exports = {
