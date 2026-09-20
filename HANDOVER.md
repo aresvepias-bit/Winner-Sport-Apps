@@ -202,7 +202,21 @@ cd backend; node api/index.js
 - [ ] **WAJIB sebelum deploy:** ganti password akun default di database — `cd backend && node scripts/set-password.js owner@winnersport.com` (ulangi untuk `admin@winnersport.com`). Backend mencetak peringatan `[SECURITY]` saat start selama masih ada akun ber-password `admin123` (password itu ada di riwayat git → publik). Kotak kredensial & prefill di halaman login sudah dihapus.
 - [ ] Export `.xlsx` sungguhan (CSV berkoma bisa menumpuk di satu kolom pada Excel regional Indonesia)
 - [ ] Deploy ke VPS via PM2 (`ecosystem.config.js` sudah ada di root) — set `JWT_SECRET` baru di environment server
-- [ ] Unit testing backend controllers
+- [x] Unit test backend controllers (`cd backend && npm test` — 68 test, tanpa database)
+
+---
+
+## 🧪 Testing
+
+```powershell
+cd backend
+npm test          # node --test, tanpa database & tanpa dependensi baru
+```
+
+- Berkas ada di `backend/tests/`. Prisma digantikan stub in-memory (`tests/helpers/stubPrisma.js`), jadi test tidak menyentuh Supabase.
+- Cakupan: middleware auth & role, perhitungan HPP/SPK, penerimaan PO, opname 2 langkah, pembayaran & status invoice, pengurangan saldo kas, serta deteksi stok minimum.
+- `tests/routeAccess.test.js` membandingkan `frontend/src/lib/routeAccess.ts` dengan `backend/api/rolePolicy.js` — kalau keduanya tidak lagi sama, test gagal. Butuh `npm install` di folder frontend; kalau belum, test ini dilewati (skip), bukan gagal.
+- Menjalankan lewat direktori (`node --test tests/`) error di Node 22 Windows; pakai `npm test` yang sudah memakai pola glob.
 
 ---
 
@@ -212,5 +226,6 @@ cd backend; node api/index.js
 2. **Backend harus jalan dulu** sebelum frontend bisa fetch data
 3. **Prisma schema** → `backend/prisma/schema.prisma` — jika ubah schema: `npx prisma migrate dev`
 4. **Env file** → `backend/.env` *(tidak di-push)* — isi: `DATABASE_URL` Supabase + `JWT_SECRET` **acak baru** (buat: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`)
-5. **Seed** (`backend/scripts/seed.js`) tidak lagi memakai password tetap: pakai env `SEED_PASSWORD` atau buat acak dan tampilkan sekali. User yang sudah ada tidak diubah passwordnya.
-6. **seed_transactions.js** → hanya untuk dummy data development, jangan jalankan di production
+5. **Peringatan `pg` saat backend start** (`client.query() ... already executing a query`) berasal dari `backend/api/db.js` baris 16-19: handler event `connect` memanggil `client.query('SET search_path ...')` tanpa `await`. Belum diperbaiki — menyentuh `search_path` berisiko, sebaiknya ditangani terpisah sebelum upgrade ke `pg@9`.
+6. **Seed** (`backend/scripts/seed.js`) tidak lagi memakai password tetap: pakai env `SEED_PASSWORD` atau buat acak dan tampilkan sekali. User yang sudah ada tidak diubah passwordnya.
+7. **seed_transactions.js** → hanya untuk dummy data development, jangan jalankan di production
