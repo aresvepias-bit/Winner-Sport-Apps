@@ -195,7 +195,7 @@ cd backend; node api/index.js
 - [x] Export CSV (Sales, PO, SPK, Stok Bahan/Produk, Mutasi, Akuntansi) — belum ada di halaman Master
 - [x] Alert stok minimum (banner dashboard + badge sidebar)
 - [x] Pagination tabel daftar (sisi klien, 10 baris/halaman; mutasi stok 15). Catatan: `/inventory/movements` dibatasi 100 baris oleh backend
-- [ ] Pecah `master/page.tsx` (>350 baris, melanggar aturan <150 baris/file)
+- [x] Pecah `master/page.tsx` (358 → 74 baris): `masterEntities.ts` (endpoint + pesan per entitas), `useMasterData`, `useMasterCrud`, `MasterTabViews`, `MasterModals`
 - [ ] Guard per role di sisi halaman frontend (akses via URL langsung)
 - [ ] **WAJIB sebelum deploy:** ganti password akun default di database — `cd backend && node scripts/set-password.js owner@winnersport.com` (ulangi untuk `admin@winnersport.com`). Backend mencetak peringatan `[SECURITY]` saat start selama masih ada akun ber-password `admin123` (password itu ada di riwayat git → publik). Kotak kredensial & prefill di halaman login sudah dihapus.
 - [ ] Export `.xlsx` sungguhan (CSV berkoma bisa menumpuk di satu kolom pada Excel regional Indonesia)
