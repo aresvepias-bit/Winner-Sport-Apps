@@ -2,6 +2,8 @@
 
 import { formatRupiah, formatDate, formatNumber } from "@/lib/utils";
 import ExportButton from "@/components/common/ExportButton";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 export interface PurchaseOrderItem {
   id: string;
@@ -23,6 +25,8 @@ interface PurchaseOrdersTableProps {
 }
 
 export default function PurchaseOrdersTable({ orders, onExportCsv }: PurchaseOrdersTableProps) {
+  const pg = usePagination(orders, 10);
+
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -49,7 +53,7 @@ export default function PurchaseOrdersTable({ orders, onExportCsv }: PurchaseOrd
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {orders && orders.length > 0 ? (
-              orders.map((po) => (
+              pg.pageItems.map((po) => (
                 <tr key={po.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3.5 font-mono font-bold text-red-600 dark:text-red-400">{po.poNumber}</td>
                   <td className="py-3.5 font-semibold text-slate-900 dark:text-slate-200">
@@ -85,6 +89,8 @@ export default function PurchaseOrdersTable({ orders, onExportCsv }: PurchaseOrd
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { formatRupiah, formatNumber } from "@/lib/utils";
 import ExportButton from "@/components/common/ExportButton";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface ProductItem {
   id: string;
@@ -17,6 +19,8 @@ interface ProductsInventoryTableProps {
 }
 
 export default function ProductsInventoryTable({ products, onExportCsv }: ProductsInventoryTableProps) {
+  const pg = usePagination(products, 10);
+
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -42,7 +46,7 @@ export default function ProductsInventoryTable({ products, onExportCsv }: Produc
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {products && products.length > 0 ? (
-              products.map((p) => {
+              pg.pageItems.map((p) => {
                 const kodi = Math.floor(p.currentStock / 20);
                 const sisaPcs = p.currentStock % 20;
                 const totalHpp = Number(p.currentStock) * Number(p.standardCost);
@@ -72,6 +76,8 @@ export default function ProductsInventoryTable({ products, onExportCsv }: Produc
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

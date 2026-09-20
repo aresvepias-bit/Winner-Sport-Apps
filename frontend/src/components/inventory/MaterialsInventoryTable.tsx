@@ -2,6 +2,8 @@
 
 import { formatRupiah, formatNumber } from "@/lib/utils";
 import ExportButton from "@/components/common/ExportButton";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface MaterialItem {
   id: string;
@@ -19,6 +21,8 @@ interface MaterialsInventoryTableProps {
 }
 
 export default function MaterialsInventoryTable({ materials, onExportCsv }: MaterialsInventoryTableProps) {
+  const pg = usePagination(materials, 10);
+
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -45,7 +49,7 @@ export default function MaterialsInventoryTable({ materials, onExportCsv }: Mate
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {materials && materials.length > 0 ? (
-              materials.map((m) => {
+              pg.pageItems.map((m) => {
                 const totalVal = Number(m.currentStock) * Number(m.standardCost);
                 const isLow = Number(m.currentStock) <= Number(m.minimumStock);
                 return (
@@ -83,6 +87,8 @@ export default function MaterialsInventoryTable({ materials, onExportCsv }: Mate
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

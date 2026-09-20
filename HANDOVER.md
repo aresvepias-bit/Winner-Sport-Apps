@@ -194,7 +194,7 @@ cd backend; node api/index.js
 - [x] Role-based access control di backend
 - [x] Export CSV (Sales, PO, SPK, Stok Bahan/Produk, Mutasi, Akuntansi) — belum ada di halaman Master
 - [x] Alert stok minimum (banner dashboard + badge sidebar)
-- [ ] Pagination untuk tabel data besar
+- [x] Pagination tabel daftar (sisi klien, 10 baris/halaman; mutasi stok 15). Catatan: `/inventory/movements` dibatasi 100 baris oleh backend
 - [ ] Pecah `master/page.tsx` (>350 baris, melanggar aturan <150 baris/file)
 - [ ] Guard per role di sisi halaman frontend (akses via URL langsung)
 - [ ] Ganti password default `admin123` & hapus kotak kredensial di halaman login sebelum deploy

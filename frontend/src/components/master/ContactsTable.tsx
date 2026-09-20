@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Search, Edit, Trash2 } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface Contact {
   id: string;
@@ -34,6 +36,8 @@ export default function ContactsTable({ contacts, onEdit, onDelete }: ContactsTa
     if (typeFilter !== "ALL" && c.type !== typeFilter) return false;
     return true;
   });
+
+  const pg = usePagination(filteredContacts, 10, `${search}|${typeFilter}`);
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
@@ -105,7 +109,7 @@ export default function ContactsTable({ contacts, onEdit, onDelete }: ContactsTa
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {filteredContacts.length > 0 ? (
-              filteredContacts.map((c) => (
+              pg.pageItems.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3 font-bold text-slate-900 dark:text-slate-200">{c.name}</td>
                   <td className="py-3">
@@ -155,6 +159,8 @@ export default function ContactsTable({ contacts, onEdit, onDelete }: ContactsTa
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

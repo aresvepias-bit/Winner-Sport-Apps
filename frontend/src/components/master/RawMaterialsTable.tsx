@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Search, Edit, Trash2 } from "lucide-react";
 import { formatRupiah, formatNumber } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface RawMaterial {
   id: string;
@@ -39,6 +41,8 @@ export default function RawMaterialsTable({ materials, onEdit, onDelete }: RawMa
     if (filterStatus === "SAFE") return !isLow;
     return true;
   });
+
+  const pg = usePagination(filteredMaterials, 10, `${search}|${filterStatus}`);
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
@@ -111,7 +115,7 @@ export default function RawMaterialsTable({ materials, onEdit, onDelete }: RawMa
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {filteredMaterials.length > 0 ? (
-              filteredMaterials.map((m) => {
+              pg.pageItems.map((m) => {
                 const isLow = Number(m.currentStock) <= Number(m.minimumStock);
                 return (
                   <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -170,6 +174,8 @@ export default function RawMaterialsTable({ materials, onEdit, onDelete }: RawMa
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

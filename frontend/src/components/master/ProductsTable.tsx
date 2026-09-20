@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Search, Edit, Trash2 } from "lucide-react";
 import { formatRupiah, formatNumber } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface Product {
   id: string;
@@ -30,6 +32,8 @@ export default function ProductsTable({ products, onEdit, onDelete }: ProductsTa
     const q = search.toLowerCase();
     return p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);
   });
+
+  const pg = usePagination(filteredProducts, 10, search);
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
@@ -66,7 +70,7 @@ export default function ProductsTable({ products, onEdit, onDelete }: ProductsTa
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {filteredProducts.length > 0 ? (
-              filteredProducts.map((p) => (
+              pg.pageItems.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3 font-mono font-bold text-red-600 dark:text-red-400">{p.sku}</td>
                   <td className="py-3 font-medium text-slate-900 dark:text-slate-200">
@@ -108,6 +112,8 @@ export default function ProductsTable({ products, onEdit, onDelete }: ProductsTa
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

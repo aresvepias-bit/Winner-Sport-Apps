@@ -3,6 +3,8 @@
 import { Printer } from "lucide-react";
 import { formatRupiah, formatDate, formatNumber } from "@/lib/utils";
 import ExportButton from "@/components/common/ExportButton";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 export interface WorkOrder {
   id: string;
@@ -31,6 +33,8 @@ export default function WorkOrdersTable({
   onOpenPrintModal,
   onExportCsv
 }: WorkOrdersTableProps) {
+  const pg = usePagination(workOrders, 10);
+
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -58,7 +62,7 @@ export default function WorkOrdersTable({
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {workOrders.length > 0 ? (
-              workOrders.map((wo) => {
+              pg.pageItems.map((wo) => {
                 const isCompleted = wo.status === "COMPLETED";
                 return (
                   <tr key={wo.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -127,6 +131,8 @@ export default function WorkOrdersTable({
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

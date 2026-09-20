@@ -2,6 +2,8 @@
 
 import { Download } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface MovementItem {
   id: string;
@@ -20,6 +22,8 @@ interface StockMovementsTableProps {
 }
 
 export default function StockMovementsTable({ movements, onExportCsv }: StockMovementsTableProps) {
+  const pg = usePagination(movements, 15);
+
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -56,7 +60,7 @@ export default function StockMovementsTable({ movements, onExportCsv }: StockMov
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {movements && movements.length > 0 ? (
-              movements.map((m) => {
+              pg.pageItems.map((m) => {
                 const isPositive = Number(m.quantity) > 0;
                 return (
                   <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -91,6 +95,8 @@ export default function StockMovementsTable({ movements, onExportCsv }: StockMov
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

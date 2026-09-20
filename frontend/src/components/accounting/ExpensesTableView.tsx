@@ -1,6 +1,8 @@
 "use client";
 
 import { formatRupiah, formatDate } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface ExpenseItem {
   id: string;
@@ -17,6 +19,8 @@ interface ExpensesTableViewProps {
 }
 
 export default function ExpensesTableView({ expenses }: ExpensesTableViewProps) {
+  const pg = usePagination(expenses, 10);
+
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="mb-4">
@@ -40,7 +44,7 @@ export default function ExpensesTableView({ expenses }: ExpensesTableViewProps) 
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {expenses && expenses.length > 0 ? (
-              expenses.map((exp) => (
+              pg.pageItems.map((exp) => (
                 <tr key={exp.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3.5 font-mono font-bold text-red-600 dark:text-red-400">
                     {exp.expenseNumber}
@@ -66,6 +70,8 @@ export default function ExpensesTableView({ expenses }: ExpensesTableViewProps) 
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }

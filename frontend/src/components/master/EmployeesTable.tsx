@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Search, Edit, Trash2 } from "lucide-react";
 import { formatRupiah } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/common/Pagination";
 
 interface Employee {
   id: string;
@@ -34,6 +36,8 @@ export default function EmployeesTable({ employees, onEdit, onDelete }: Employee
     if (wageFilter !== "ALL" && e.wageType !== wageFilter) return false;
     return true;
   });
+
+  const pg = usePagination(filteredEmployees, 10, `${search}|${wageFilter}`);
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
@@ -105,7 +109,7 @@ export default function EmployeesTable({ employees, onEdit, onDelete }: Employee
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
             {filteredEmployees.length > 0 ? (
-              filteredEmployees.map((e) => (
+              pg.pageItems.map((e) => (
                 <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3 font-bold text-slate-900 dark:text-slate-200">{e.name}</td>
                   <td className="py-3 text-slate-700 dark:text-slate-300 font-medium">{e.role}</td>
@@ -150,6 +154,8 @@ export default function EmployeesTable({ employees, onEdit, onDelete }: Employee
           </tbody>
         </table>
       </div>
+
+      <Pagination {...pg} />
     </div>
   );
 }
