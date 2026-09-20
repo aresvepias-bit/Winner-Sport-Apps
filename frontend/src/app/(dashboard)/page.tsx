@@ -8,6 +8,7 @@ import DashboardTrendChart from "@/components/dashboard/DashboardTrendChart";
 import DashboardQuickNav from "@/components/dashboard/DashboardQuickNav";
 import DashboardRecentOrders from "@/components/dashboard/DashboardRecentOrders";
 import LowStockAlert from "@/components/dashboard/LowStockAlert";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import { useLowStock } from "@/lib/useLowStock";
 
 export default function DashboardPage() {
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [hidePrices, setHidePrices] = useState(false);
   const [stats, setStats] = useState<any>(null);
+  const [loadError, setLoadError] = useState("");
 
   const checkHidePrices = () => {
     setHidePrices(localStorage.getItem("hide-prices") === "true");
@@ -22,13 +24,14 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const data = await api.get("/dashboard/stats");
       if (data && data.sales) {
         setStats(data);
       }
-    } catch (err) {
-      console.warn("Using fallback operational figures:", err);
+    } catch (err: any) {
+      setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
       setLoading(false);
     }
@@ -52,6 +55,8 @@ export default function DashboardPage() {
           reloadLowStock();
         }}
       />
+
+      <ErrorBanner message={loadError} onRetry={loadStats} />
 
       {/* 1b. Alert stok di bawah minimum */}
       <LowStockAlert items={lowStockItems} />

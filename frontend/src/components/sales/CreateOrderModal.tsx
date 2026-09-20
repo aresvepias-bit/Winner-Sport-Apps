@@ -4,7 +4,13 @@ import { useState } from "react";
 import { formatRupiah } from "@/lib/utils";
 import NumberInput from "@/components/common/NumberInput";
 
+interface CustomerOption {
+  id: string;
+  name: string;
+}
+
 interface CreateOrderModalProps {
+  customers: CustomerOption[];
   onClose: () => void;
   onSubmit: (newOrder: {
     customerId: string;
@@ -16,9 +22,9 @@ interface CreateOrderModalProps {
   }) => Promise<void>;
 }
 
-export default function CreateOrderModal({ onClose, onSubmit }: CreateOrderModalProps) {
+export default function CreateOrderModal({ customers, onClose, onSubmit }: CreateOrderModalProps) {
   const [form, setForm] = useState({
-    customerId: "1",
+    customerId: customers[0]?.id || "",
     orderType: "KODIAN",
     quantity: 5,
     unitName: "kodi",
@@ -51,6 +57,28 @@ export default function CreateOrderModal({ onClose, onSubmit }: CreateOrderModal
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 text-xs">
+          <div>
+            <label className="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Pelanggan</label>
+            <select
+              value={form.customerId}
+              onChange={(e) => setForm({ ...form, customerId: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-red-500"
+              required
+            >
+              {customers.length === 0 && <option value="">Belum ada pelanggan</option>}
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {customers.length === 0 && (
+              <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400">
+                Tambahkan pelanggan dulu di Master Data &gt; Rekanan.
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Tipe Penjualan</label>
             <select
@@ -117,7 +145,7 @@ export default function CreateOrderModal({ onClose, onSubmit }: CreateOrderModal
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !form.customerId}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl cursor-pointer shadow-md shadow-blue-600/25 transition-all disabled:opacity-50"
             >
               {submitting ? "Menyimpan..." : "Simpan & Terbitkan Invoice"}

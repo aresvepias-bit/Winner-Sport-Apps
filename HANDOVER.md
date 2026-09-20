@@ -173,13 +173,33 @@ cd backend; node api/index.js
 
 ---
 
+## 🔐 Autentikasi & Hak Akses (RBAC)
+
+- Semua endpoint `/api/*` (kecuali `POST /api/auth/login`) **wajib** header `Authorization: Bearer <JWT>`. Tanpa token / token demo / token salah → `401`.
+- `verifyToken` mengecek user ke DB tiap request (akun nonaktif & perubahan role langsung berlaku).
+- Role = enum `Role` di `schema.prisma`: `OWNER, ADMIN, WAREHOUSE, PRODUCTION, SALES, ACCOUNTING`. OWNER selalu lolos.
+- Kebijakan per modul ada di `backend/api/rolePolicy.js` (mengikuti menu di `sidebar.tsx`). Master data: baca untuk semua role yang login, tulis hanya ADMIN/PRODUCTION; data karyawan hanya ADMIN/PRODUCTION.
+- Backend **menolak start** bila `JWT_SECRET` kosong atau sama dengan default lama (default lama sudah ter-commit → dianggap bocor).
+- Pengganti role di sidebar hanya mengubah menu yang tampil (kosmetik); hak akses sebenarnya ditentukan role di database.
+
+## 🧭 Perilaku Data di Frontend
+
+- Halaman **tidak lagi** menampilkan data contoh saat API kosong/gagal. Gagal muat → `ErrorBanner` + tombol coba lagi. Gagal simpan → alert berisi pesan error asli, modal tetap terbuka, tidak ada record lokal palsu.
+- Payload yang dikirim frontend harus cocok dengan controller backend (PO = header + `items[]`, Opname = create lalu `apply`, Pengeluaran = `categoryId` + `accountId`, Sales = `customerId` dipilih dari Master > Rekanan).
+
+---
+
 ## 🚧 Potential Next Steps
 
-- [ ] Role-based access control (admin vs staff)
-- [ ] Export laporan Excel (exportUtils.ts sudah siap, tinggal integrasi)
-- [ ] Alert notifikasi stok minimum (stok < minimumStock)
+- [x] Role-based access control di backend
+- [x] Export CSV (Sales, PO, SPK, Stok Bahan/Produk, Mutasi, Akuntansi) — belum ada di halaman Master
+- [x] Alert stok minimum (banner dashboard + badge sidebar)
 - [ ] Pagination untuk tabel data besar
-- [ ] Deploy ke VPS via PM2 (`ecosystem.config.js` sudah ada di root)
+- [ ] Pecah `master/page.tsx` (>350 baris, melanggar aturan <150 baris/file)
+- [ ] Guard per role di sisi halaman frontend (akses via URL langsung)
+- [ ] Ganti password default `admin123` & hapus kotak kredensial di halaman login sebelum deploy
+- [ ] Export `.xlsx` sungguhan (CSV berkoma bisa menumpuk di satu kolom pada Excel regional Indonesia)
+- [ ] Deploy ke VPS via PM2 (`ecosystem.config.js` sudah ada di root) — set `JWT_SECRET` baru di environment server
 - [ ] Unit testing backend controllers
 
 ---
@@ -189,5 +209,5 @@ cd backend; node api/index.js
 1. **Jangan hapus** `frontend/public/logo.png` dan `logo-emblem.png` — dipakai sidebar & login page
 2. **Backend harus jalan dulu** sebelum frontend bisa fetch data
 3. **Prisma schema** → `backend/prisma/schema.prisma` — jika ubah schema: `npx prisma migrate dev`
-4. **Env file** → `backend/.env` *(tidak di-push)* — isi: `DATABASE_URL` Supabase + `JWT_SECRET`
+4. **Env file** → `backend/.env` *(tidak di-push)* — isi: `DATABASE_URL` Supabase + `JWT_SECRET` **acak baru** (buat: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`)
 5. **seed_transactions.js** → hanya untuk dummy data development, jangan jalankan di production

@@ -25,7 +25,7 @@ export default function StockOpnameModal({
 }: StockOpnameModalProps) {
   const [itemType, setItemType] = useState<"MATERIAL" | "PRODUCT">("MATERIAL");
   const [selectedId, setSelectedId] = useState(
-    itemType === "MATERIAL" ? materials[0]?.id || "1" : products[0]?.id || "1"
+    itemType === "MATERIAL" ? materials[0]?.id || "" : products[0]?.id || ""
   );
   const [physicalQty, setPhysicalQty] = useState(0);
   const [notes, setNotes] = useState("");

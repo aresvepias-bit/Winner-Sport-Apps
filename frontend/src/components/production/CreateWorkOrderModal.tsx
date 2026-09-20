@@ -25,7 +25,7 @@ export default function CreateWorkOrderModal({
   onClose,
   onSubmit
 }: CreateWorkOrderModalProps) {
-  const [productId, setProductId] = useState(products[0]?.id || "1");
+  const [productId, setProductId] = useState(products[0]?.id || "");
   const [targetQty, setTargetQty] = useState(100);
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]

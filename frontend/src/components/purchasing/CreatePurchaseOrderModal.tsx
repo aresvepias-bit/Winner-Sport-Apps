@@ -35,8 +35,8 @@ export default function CreatePurchaseOrderModal({
   onClose,
   onSubmit
 }: CreatePurchaseOrderModalProps) {
-  const [supplierId, setSupplierId] = useState(suppliers[0]?.id || "1");
-  const [rawMaterialId, setRawMaterialId] = useState(materials[0]?.id || "1");
+  const [supplierId, setSupplierId] = useState(suppliers[0]?.id || "");
+  const [rawMaterialId, setRawMaterialId] = useState(materials[0]?.id || "");
   const [quantity, setQuantity] = useState(100);
   const [unitPrice, setUnitPrice] = useState(materials[0]?.standardCost || 85000);
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split("T")[0]);

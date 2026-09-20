@@ -4,22 +4,24 @@ import { useState } from "react";
 import NumberInput from "@/components/common/NumberInput";
 
 interface CreateExpenseModalProps {
+  categories: Array<{ id: string; name: string }>;
+  accounts: Array<{ id: string; name: string }>;
   onClose: () => void;
   onSubmit: (formData: {
-    categoryName: string;
+    categoryId: string;
+    accountId: string;
     amount: number;
     recipient: string;
-    paymentSource: string;
     notes: string;
   }) => Promise<void>;
 }
 
-export default function CreateExpenseModal({ onClose, onSubmit }: CreateExpenseModalProps) {
+export default function CreateExpenseModal({ categories, accounts, onClose, onSubmit }: CreateExpenseModalProps) {
   const [form, setForm] = useState({
-    categoryName: "Operasional Pabrik",
+    categoryId: categories[0]?.id || "",
+    accountId: accounts[0]?.id || "",
     amount: 500000,
     recipient: "",
-    paymentSource: "Kas Utama Tunai",
     notes: ""
   });
   const [submitting, setSubmitting] = useState(false);
@@ -48,17 +50,16 @@ export default function CreateExpenseModal({ onClose, onSubmit }: CreateExpenseM
           <div>
             <label className="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Kategori Pengeluaran</label>
             <select
-              value={form.categoryName}
-              onChange={(e) => setForm({ ...form, categoryName: e.target.value })}
+              value={form.categoryId}
+              onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-red-500"
             >
-              <option value="Operasional Pabrik">Operasional Pabrik &amp; Workshop</option>
-              <option value="Listrik & Air Workshop">Listrik &amp; Air Workshop (PLN/PDAM)</option>
-              <option value="Perawatan Mesin">Perawatan Mesin Jahit &amp; Obras</option>
-              <option value="Logistik & Transportasi">Logistik &amp; Ongkos Kirim</option>
-              <option value="Konsumsi & Kebersihan">Konsumsi Lembur &amp; Kebersihan</option>
-              <option value="Perlengkapan Packaging">Plastik, Solasi, &amp; Lakban</option>
-              <option value="Lain-Lain">Beban Usaha Lain-Lain</option>
+              <option value="">Tanpa kategori</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -75,12 +76,17 @@ export default function CreateExpenseModal({ onClose, onSubmit }: CreateExpenseM
             <div>
               <label className="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Rekening Sumber Kas</label>
               <select
-                value={form.paymentSource}
-                onChange={(e) => setForm({ ...form, paymentSource: e.target.value })}
+                value={form.accountId}
+                onChange={(e) => setForm({ ...form, accountId: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-red-500"
+                required
               >
-                <option value="Kas Utama Tunai">Kas Utama Tunai (Petty Cash)</option>
-                <option value="Bank BCA Operasional">Bank BCA Operasional</option>
+                {accounts.length === 0 && <option value="">Belum ada rekening kas</option>}
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -117,7 +123,7 @@ export default function CreateExpenseModal({ onClose, onSubmit }: CreateExpenseM
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !form.accountId}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl cursor-pointer shadow-md shadow-blue-600/25 transition-all disabled:opacity-50"
             >
               {submitting ? "Mencatat..." : "Simpan Pengeluaran"}

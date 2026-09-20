@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { exportToCsv } from "@/lib/exportUtils";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import AccountingHeader from "@/components/accounting/AccountingHeader";
 import AccountingNavTabs, { AccountingTabType } from "@/components/accounting/AccountingNavTabs";
 import ProfitAndLossView from "@/components/accounting/ProfitAndLossView";
@@ -14,6 +15,8 @@ import CreateExpenseModal from "@/components/accounting/CreateExpenseModal";
 export default function AccountingPage() {
   const [activeTab, setActiveTab] = useState<AccountingTabType>("pnl");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   const [pnl, setPnl] = useState<any>(null);
@@ -22,6 +25,7 @@ export default function AccountingPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       if (activeTab === "pnl") {
         const res = await api.get("/accounting/profit-and-loss");
@@ -33,8 +37,8 @@ export default function AccountingPage() {
         const res = await api.get("/accounting/expenses");
         if (res && Array.isArray(res)) setExpenses(res);
       }
-    } catch (err) {
-      console.warn("Using default accounting figures:", err);
+    } catch (err: any) {
+      setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
       setLoading(false);
     }
@@ -44,25 +48,38 @@ export default function AccountingPage() {
     loadData();
   }, [activeTab]);
 
-  const handleCreateExpense = async (formData: any) => {
+  // Kategori beban & rekening kas dibutuhkan form pengeluaran (backend menyimpan berdasarkan ID).
+  const openExpenseModal = async () => {
     try {
-      await api.post("/accounting/expenses", formData);
-      alert("Pengeluaran Kas Berhasil Dicatat!");
+      const [cats, cash] = await Promise.all([
+        api.get("/master/categories?type=EXPENSE"),
+        api.get("/accounting/cash-bank")
+      ]);
+      setExpenseCategories(Array.isArray(cats) ? cats : []);
+      setCashAccounts(cash?.accounts || []);
+      setShowExpenseModal(true);
+    } catch (err: any) {
+      alert(err.message || "Gagal memuat kategori dan rekening kas.");
+    }
+  };
+
+  const handleCreateExpense = async (formData: {
+    categoryId: string;
+    accountId: string;
+    amount: number;
+    recipient: string;
+    notes: string;
+  }) => {
+    try {
+      await api.post("/accounting/expenses", {
+        ...formData,
+        categoryId: formData.categoryId || undefined
+      });
+      alert("Pengeluaran Kas Berhasil Dicatat & saldo rekening telah dikurangi!");
       setShowExpenseModal(false);
       loadData();
-    } catch (err) {
-      const newExp = {
-        id: String(Date.now()),
-        expenseNumber: `EXP-2026-${Date.now().toString().slice(-4)}`,
-        date: new Date(),
-        amount: formData.amount,
-        recipient: formData.recipient,
-        category: { name: formData.categoryName },
-        notes: formData.notes
-      };
-      setExpenses([newExp, ...expenses]);
-      setShowExpenseModal(false);
-      alert("Pengeluaran Kas Berhasil Disimpan!");
+    } catch (err: any) {
+      alert(err.message || "Gagal mencatat pengeluaran. Data belum tersimpan.");
     }
   };
 
@@ -101,9 +118,11 @@ export default function AccountingPage() {
       <AccountingHeader
         loading={loading}
         onRefresh={loadData}
-        onCreateExpense={() => setShowExpenseModal(true)}
+        onCreateExpense={openExpenseModal}
         onExportCsv={activeTab !== "payroll" ? handleExportCsv : undefined}
       />
+
+      <ErrorBanner message={loadError} onRetry={loadData} />
 
       {/* 2. Navigation Tabs */}
       <AccountingNavTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -145,6 +164,8 @@ export default function AccountingPage() {
       {/* 4. Create Expense Modal */}
       {showExpenseModal && (
         <CreateExpenseModal
+          categories={expenseCategories}
+          accounts={cashAccounts}
           onClose={() => setShowExpenseModal(false)}
           onSubmit={handleCreateExpense}
         />

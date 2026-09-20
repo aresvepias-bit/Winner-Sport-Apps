@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { exportToCsv } from "@/lib/exportUtils";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import ProductionHeader from "@/components/production/ProductionHeader";
 import WorkOrdersTable, { WorkOrder } from "@/components/production/WorkOrdersTable";
 import CompleteWorkOrderModal from "@/components/production/CompleteWorkOrderModal";
@@ -13,6 +14,7 @@ export default function ProductionPage() {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -20,46 +22,16 @@ export default function ProductionPage() {
 
   const loadWorkOrders = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const [resWO, resProd] = await Promise.all([
         api.get("/production/work-orders"),
-        api.get("/master/products").catch(() => [])
+        api.get("/master/products")
       ]);
-      if (resProd && Array.isArray(resProd)) {
-        setProducts(resProd);
-      }
-      if (resWO && Array.isArray(resWO) && resWO.length > 0) {
-        setWorkOrders(resWO);
-      } else {
-        setWorkOrders([
-          {
-            id: "1",
-            woNumber: "SPK-2026-0041",
-            product: { name: "Jersey Futsal Winner Dryfit (Custom)" },
-            targetQty: 100,
-            completedQty: 0,
-            status: "IN_PROGRESS",
-            dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-            materialCost: 2125000,
-            notes: "Pesanan FC Juara Futsal - Sablon Polyflex Nama Punggung"
-          },
-          {
-            id: "2",
-            woNumber: "SPK-2026-0040",
-            product: { name: "Kaos Polos Cotton Combed 30s Hitam" },
-            targetQty: 200,
-            completedQty: 200,
-            scrapQty: 4,
-            status: "COMPLETED",
-            dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-            materialCost: 6270000,
-            hppPerPcs: 39850,
-            notes: "Restock gudang kodi distro"
-          }
-        ]);
-      }
-    } catch (err) {
-      console.warn("Error fetching work orders:", err);
+      setProducts(Array.isArray(resProd) ? resProd : []);
+      setWorkOrders(Array.isArray(resWO) ? resWO : []);
+    } catch (err: any) {
+      setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
       setLoading(false);
     }
@@ -119,23 +91,7 @@ export default function ProductionPage() {
       setShowCreateModal(false);
       loadWorkOrders();
     } catch (err: any) {
-      const selectedProd = products.find((p) => p.id === formData.productId) || {
-        name: "Jersey Futsal Winner Dryfit (Custom)"
-      };
-      const newWO: WorkOrder = {
-        id: String(Date.now()),
-        woNumber: `SPK-2026-${Date.now().toString().slice(-4)}`,
-        product: { name: selectedProd.name },
-        targetQty: formData.targetQty,
-        completedQty: 0,
-        status: "IN_PROGRESS",
-        dueDate: formData.dueDate,
-        materialCost: Math.round(formData.targetQty * 0.25 * 85000),
-        notes: formData.notes
-      };
-      setWorkOrders([newWO, ...workOrders]);
-      setShowCreateModal(false);
-      alert("Surat Perintah Kerja (SPK) Baru Berhasil Diterbitkan!");
+      alert(err.message || "Gagal menerbitkan SPK. Data belum tersimpan.");
     }
   };
 
@@ -154,26 +110,7 @@ export default function ProductionPage() {
       setShowCompleteModal(false);
       loadWorkOrders();
     } catch (err: any) {
-      const updated = workOrders.map((wo) => {
-        if (wo.id === selectedWO.id) {
-          const total =
-            Number(wo.materialCost || 2000000) +
-            formData.sewingCost +
-            formData.laborCost +
-            formData.overheadCost;
-          return {
-            ...wo,
-            status: "COMPLETED",
-            completedQty: formData.completedQty,
-            scrapQty: formData.scrapQty,
-            hppPerPcs: Math.round(total / (formData.completedQty || 1))
-          };
-        }
-        return wo;
-      });
-      setWorkOrders(updated);
-      setShowCompleteModal(false);
-      alert("SPK Berhasil Diselesaikan! Stok bertambah dan HPP tersimpan.");
+      alert(err.message || "Gagal menyelesaikan SPK. Stok dan HPP belum berubah.");
     }
   };
 
@@ -185,6 +122,8 @@ export default function ProductionPage() {
         onRefresh={loadWorkOrders}
         onCreateSPK={() => setShowCreateModal(true)}
       />
+
+      <ErrorBanner message={loadError} onRetry={loadWorkOrders} />
 
       {/* 2. Work Orders Table */}
       <WorkOrdersTable

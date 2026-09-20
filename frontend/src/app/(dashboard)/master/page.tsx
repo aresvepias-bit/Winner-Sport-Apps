@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import MasterHeader from "@/components/master/MasterHeader";
 import MasterNavTabs, { MasterTabType } from "@/components/master/MasterNavTabs";
 import MasterKpiBar from "@/components/master/MasterKpiBar";
@@ -22,6 +23,7 @@ import EditEmployeeModal from "@/components/master/EditEmployeeModal";
 export default function MasterDataPage() {
   const [activeTab, setActiveTab] = useState<MasterTabType>("materials");
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const [materials, setMaterials] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -43,6 +45,7 @@ export default function MasterDataPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       if (activeTab === "materials") {
         const res = await api.get("/master/raw-materials");
@@ -60,8 +63,8 @@ export default function MasterDataPage() {
         const res = await api.get("/master/employees");
         setEmployees(res || []);
       }
-    } catch (err) {
-      console.warn("Error loading master data, fallback to active data:", err);
+    } catch (err: any) {
+      setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
       setLoading(false);
     }
@@ -244,6 +247,8 @@ export default function MasterDataPage() {
         onCreateNew={activeTab !== "boms" ? handleOpenCreateModal : undefined}
         createButtonText={getCreateButtonText()}
       />
+
+      <ErrorBanner message={loadError} onRetry={loadData} />
 
       {/* 2. Navigation Tabs */}
       <MasterNavTabs activeTab={activeTab} onTabChange={setActiveTab} />

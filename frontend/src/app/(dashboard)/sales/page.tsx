@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { exportToCsv } from "@/lib/exportUtils";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import SalesHeader from "@/components/sales/SalesHeader";
 import SalesOrdersTable, { SalesOrderItem } from "@/components/sales/SalesOrdersTable";
 import CreateOrderModal from "@/components/sales/CreateOrderModal";
@@ -10,47 +11,27 @@ import PrintInvoiceModal from "@/components/print/PrintInvoiceModal";
 
 export default function SalesPage() {
   const [orders, setOrders] = useState<SalesOrderItem[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<SalesOrderItem | null>(null);
 
   const loadOrders = async () => {
     setLoading(true);
+    setLoadError("");
     try {
-      const res = await api.get("/sales/orders");
-      if (res && Array.isArray(res) && res.length > 0) {
-        setOrders(res);
-      } else {
-        setOrders([
-          {
-            id: "1",
-            soNumber: "SO-2026-0012",
-            customer: { name: "FC Juara Futsal", phone: "0812-9988-7766", address: "Gedung Olahraga Futsal Kemang, Jakarta Selatan" },
-            orderType: "CUSTOM_ORDER",
-            totalAmount: 3750000,
-            paidAmount: 2000000,
-            paymentStatus: "PARTIAL",
-            status: "IN_PRODUCTION",
-            createdAt: new Date(),
-            items: [{ customDescription: "Jersey Futsal Custom Full Print (50 pcs)", quantity: 50, pricePerUnit: 75000, unitName: "pcs" }]
-          },
-          {
-            id: "2",
-            soNumber: "SO-2026-0011",
-            customer: { name: "Toko Sport Jaya Abadi", phone: "0813-1122-3344", address: "Pasar Grosir Tanah Abang Blok A No. 12" },
-            orderType: "KODIAN",
-            totalAmount: 6000000,
-            paidAmount: 6000000,
-            paymentStatus: "PAID",
-            status: "CONFIRMED",
-            createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-            items: [{ product: { name: "Jersey Futsal Winner Dryfit" }, quantity: 5, pricePerUnit: 1200000, unitName: "kodi" }]
-          }
-        ]);
-      }
-    } catch (err) {
-      console.warn("Using sample orders:", err);
+      const [resOrders, resContacts] = await Promise.all([
+        api.get("/sales/orders"),
+        api.get("/master/contacts")
+      ]);
+      setOrders(Array.isArray(resOrders) ? resOrders : []);
+      setCustomers(
+        Array.isArray(resContacts) ? resContacts.filter((c: any) => c.type === "CUSTOMER" || c.type === "BOTH") : []
+      );
+    } catch (err: any) {
+      setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
       setLoading(false);
     }
@@ -116,28 +97,7 @@ export default function SalesPage() {
       setShowCreateModal(false);
       loadOrders();
     } catch (err: any) {
-      const mockSO: SalesOrderItem = {
-        id: String(Date.now()),
-        soNumber: `SO-2026-${Date.now().toString().slice(-4)}`,
-        customer: { name: "Pelanggan Grosir Baru", address: "Gudang Distribusi Mitra" },
-        orderType: formData.orderType,
-        totalAmount: formData.quantity * formData.pricePerUnit,
-        paidAmount: 0,
-        paymentStatus: "UNPAID",
-        status: "CONFIRMED",
-        createdAt: new Date(),
-        items: [
-          {
-            customDescription: `Pesanan (${formData.quantity} ${formData.unitName})`,
-            quantity: formData.quantity,
-            unitName: formData.unitName,
-            pricePerUnit: formData.pricePerUnit
-          }
-        ]
-      };
-      setOrders([mockSO, ...orders]);
-      setShowCreateModal(false);
-      alert("Order Penjualan berhasil dicatat!");
+      alert(err.message || "Gagal membuat order penjualan. Data belum tersimpan.");
     }
   };
 
@@ -150,6 +110,8 @@ export default function SalesPage() {
         onCreateOrder={() => setShowCreateModal(true)}
       />
 
+      <ErrorBanner message={loadError} onRetry={loadOrders} />
+
       {/* 2. Sales Orders Table */}
       <SalesOrdersTable
         orders={orders}
@@ -160,6 +122,7 @@ export default function SalesPage() {
       {/* 3. Create Order Modal */}
       {showCreateModal && (
         <CreateOrderModal
+          customers={customers}
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateOrder}
         />

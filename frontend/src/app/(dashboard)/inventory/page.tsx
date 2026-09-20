@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { exportToCsv } from "@/lib/exportUtils";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import InventoryHeader from "@/components/inventory/InventoryHeader";
 import InventoryNavTabs, { InventoryTabType } from "@/components/inventory/InventoryNavTabs";
 import MaterialsInventoryTable from "@/components/inventory/MaterialsInventoryTable";
@@ -14,6 +15,7 @@ import StockOpnameModal from "@/components/inventory/StockOpnameModal";
 export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<InventoryTabType>("materials");
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [showOpnameModal, setShowOpnameModal] = useState(false);
 
   const [materials, setMaterials] = useState<any[]>([]);
@@ -22,17 +24,18 @@ export default function InventoryPage() {
 
   const loadInventory = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const [resMat, resProd, resMov] = await Promise.all([
-        api.get("/master/raw-materials").catch(() => []),
-        api.get("/master/products").catch(() => []),
-        api.get("/inventory/movements").catch(() => [])
+        api.get("/master/raw-materials"),
+        api.get("/master/products"),
+        api.get("/inventory/movements")
       ]);
-      if (resMat && Array.isArray(resMat)) setMaterials(resMat);
-      if (resProd && Array.isArray(resProd)) setProducts(resProd);
-      if (resMov && Array.isArray(resMov)) setMovements(resMov);
-    } catch (err) {
-      console.warn("Using sample inventory data:", err);
+      setMaterials(Array.isArray(resMat) ? resMat : []);
+      setProducts(Array.isArray(resProd) ? resProd : []);
+      setMovements(Array.isArray(resMov) ? resMov : []);
+    } catch (err: any) {
+      setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
       setLoading(false);
     }
@@ -43,36 +46,27 @@ export default function InventoryPage() {
   }, [activeTab]);
 
   const handleApplyOpname = async (data: any) => {
+    const isMaterial = data.itemType === "MATERIAL";
     try {
-      await api.post("/inventory/opname", data);
+      // Backend: buat sesi opname (DRAFT) lalu terapkan agar stok & mutasi ikut berubah.
+      const opname = await api.post("/inventory/opname", {
+        itemType: isMaterial ? "RAW_MATERIAL" : "PRODUCT",
+        notes: data.notes,
+        items: [
+          {
+            [isMaterial ? "rawMaterialId" : "productId"]: data.itemId,
+            systemQty: data.systemQty,
+            physicalQty: data.physicalQty,
+            notes: data.notes
+          }
+        ]
+      });
+      await api.post(`/inventory/opname/${opname.id}/apply`);
       alert("Stock Opname Berhasil Diterapkan & Saldo Stok Telah Disesuaikan!");
       setShowOpnameModal(false);
       loadInventory();
-    } catch (err) {
-      const newMov = {
-        id: String(Date.now()),
-        createdAt: new Date(),
-        rawMaterial: data.itemType === "MATERIAL" ? { name: "Penyesuaian Bahan Kain" } : undefined,
-        product: data.itemType === "PRODUCT" ? { name: "Penyesuaian Produk Jadi" } : undefined,
-        type: "ADJUSTMENT_OPNAME",
-        quantity: data.discrepancy,
-        balanceAfter: data.physicalQty,
-        referenceId: `OPNAME-${Date.now().toString().slice(-4)}`
-      };
-      setMovements([newMov, ...movements]);
-
-      if (data.itemType === "MATERIAL") {
-        setMaterials((prev) =>
-          prev.map((m) => (m.id === data.itemId ? { ...m, currentStock: data.physicalQty } : m))
-        );
-      } else {
-        setProducts((prev) =>
-          prev.map((p) => (p.id === data.itemId ? { ...p, currentStock: data.physicalQty } : p))
-        );
-      }
-
-      setShowOpnameModal(false);
-      alert("Stock Opname Berhasil Disimpan & Stok Disesuaikan!");
+    } catch (err: any) {
+      alert(err.message || "Gagal menerapkan Stock Opname. Stok belum berubah.");
     }
   };
 
@@ -122,6 +116,8 @@ export default function InventoryPage() {
     <div className="space-y-6">
       {/* 1. Header */}
       <InventoryHeader loading={loading} onRefresh={loadInventory} />
+
+      <ErrorBanner message={loadError} onRetry={loadInventory} />
 
       {/* 2. Navigation Tabs */}
       <InventoryNavTabs activeTab={activeTab} onTabChange={setActiveTab} />
