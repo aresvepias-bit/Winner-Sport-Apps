@@ -68,6 +68,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5005;
 app.listen(PORT, () => {
   console.log(`[server] Winner Sport Backend API berjalan di http://localhost:${PORT}`);
+  require('./defaultPasswordCheck').warnAboutDefaultPasswords();
 });
 
 module.exports = app;

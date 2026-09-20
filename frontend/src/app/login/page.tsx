@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
+import { Building2, Lock, Mail, ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("owner@winnersport.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -71,6 +71,7 @@ export default function LoginPage() {
               <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 text-xs font-medium focus:outline-none focus:border-red-500"
@@ -88,6 +89,7 @@ export default function LoginPage() {
               <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 text-xs font-medium focus:outline-none focus:border-red-500"
@@ -106,20 +108,6 @@ export default function LoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Demo Credentials Box */}
-        <div className="mt-6 pt-5 border-t border-slate-200 dark:border-[#1a2236] text-[11px] text-slate-500 dark:text-slate-400">
-          <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-bold mb-1">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Kredensial Default Sistem:</span>
-          </div>
-          <p className="text-slate-600 dark:text-slate-300">
-            Owner: <span className="text-slate-900 dark:text-white font-mono font-bold">owner@winnersport.com</span> / <span className="text-slate-900 dark:text-white font-mono">admin123</span>
-          </p>
-          <p className="text-slate-600 dark:text-slate-300 mt-0.5">
-            Admin: <span className="text-slate-900 dark:text-white font-mono font-bold">admin@winnersport.com</span> / <span className="text-slate-900 dark:text-white font-mono">admin123</span>
-          </p>
-        </div>
       </div>
 
       <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center mt-6">

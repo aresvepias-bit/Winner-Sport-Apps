@@ -197,7 +197,7 @@ cd backend; node api/index.js
 - [x] Pagination tabel daftar (sisi klien, 10 baris/halaman; mutasi stok 15). Catatan: `/inventory/movements` dibatasi 100 baris oleh backend
 - [ ] Pecah `master/page.tsx` (>350 baris, melanggar aturan <150 baris/file)
 - [ ] Guard per role di sisi halaman frontend (akses via URL langsung)
-- [ ] Ganti password default `admin123` & hapus kotak kredensial di halaman login sebelum deploy
+- [ ] **WAJIB sebelum deploy:** ganti password akun default di database — `cd backend && node scripts/set-password.js owner@winnersport.com` (ulangi untuk `admin@winnersport.com`). Backend mencetak peringatan `[SECURITY]` saat start selama masih ada akun ber-password `admin123` (password itu ada di riwayat git → publik). Kotak kredensial & prefill di halaman login sudah dihapus.
 - [ ] Export `.xlsx` sungguhan (CSV berkoma bisa menumpuk di satu kolom pada Excel regional Indonesia)
 - [ ] Deploy ke VPS via PM2 (`ecosystem.config.js` sudah ada di root) — set `JWT_SECRET` baru di environment server
 - [ ] Unit testing backend controllers
@@ -210,4 +210,5 @@ cd backend; node api/index.js
 2. **Backend harus jalan dulu** sebelum frontend bisa fetch data
 3. **Prisma schema** → `backend/prisma/schema.prisma` — jika ubah schema: `npx prisma migrate dev`
 4. **Env file** → `backend/.env` *(tidak di-push)* — isi: `DATABASE_URL` Supabase + `JWT_SECRET` **acak baru** (buat: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`)
-5. **seed_transactions.js** → hanya untuk dummy data development, jangan jalankan di production
+5. **Seed** (`backend/scripts/seed.js`) tidak lagi memakai password tetap: pakai env `SEED_PASSWORD` atau buat acak dan tampilkan sekali. User yang sudah ada tidak diubah passwordnya.
+6. **seed_transactions.js** → hanya untuk dummy data development, jangan jalankan di production

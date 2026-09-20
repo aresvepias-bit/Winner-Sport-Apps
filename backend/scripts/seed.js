@@ -6,7 +6,10 @@ async function main() {
   console.log('🚀 Memulai Seeding Data Awal Winner Sport Konveksi...');
 
   // 1. Buat Pengguna Default (Owner & Admin)
-  const hashedPassword = await bcrypt.hash('admin123', 10);
+  // Tidak ada password tetap di repo: pakai SEED_PASSWORD, atau buat acak dan tampilkan sekali.
+  const seedPassword = process.env.SEED_PASSWORD || require('crypto').randomBytes(9).toString('base64url');
+  const generated = !process.env.SEED_PASSWORD;
+  const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
   const owner = await prisma.user.upsert({
     where: { email: 'owner@winnersport.com' },
@@ -32,7 +35,9 @@ async function main() {
     }
   });
 
-  console.log('✅ User default berhasil dibuat: owner@winnersport.com / admin@winnersport.com (Pass: admin123)');
+  console.log('✅ User default: owner@winnersport.com / admin@winnersport.com');
+  console.log('   (user yang sudah ada tidak diubah passwordnya; gunakan scripts/set-password.js untuk mengganti)');
+  if (generated) console.log(`   Password awal untuk user BARU (catat, hanya tampil sekali): ${seedPassword}`);
 
   // 2. Satuan Ukuran Konveksi
   const unitsData = [
