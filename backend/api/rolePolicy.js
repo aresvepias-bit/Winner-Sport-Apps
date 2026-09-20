@@ -1,6 +1,9 @@
 /**
- * Kebijakan akses per modul. Mengikuti pembagian menu di frontend/src/components/sidebar.tsx.
+ * Kebijakan akses per modul (penentu akhir; frontend hanya mencerminkannya).
  * OWNER selalu diizinkan oleh checkRole, jadi tidak perlu ditulis di sini.
+ *
+ * Cerminannya di frontend: frontend/src/lib/routeAccess.ts (menu sidebar & guard halaman).
+ * Ubah keduanya bersamaan agar UI tidak menampilkan halaman yang ditolak backend.
  */
 module.exports = {
   DASHBOARD: ['ADMIN', 'SALES', 'ACCOUNTING'],

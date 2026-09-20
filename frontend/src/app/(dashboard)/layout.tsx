@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/sidebar";
 import { Menu, Eye, EyeOff, Calendar, Clock, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthGuard } from "@/lib/session";
+import ForbiddenScreen from "@/components/common/ForbiddenScreen";
 
 export default function DashboardLayout({
   children,
@@ -16,16 +18,7 @@ export default function DashboardLayout({
   const [theme, setTheme] = useState("light");
   const [timeString, setTimeString] = useState("");
   const [dateString, setDateString] = useState("");
-  const [authed, setAuthed] = useState(false);
-
-  // Route guard: tanpa token, kembali ke halaman login.
-  useEffect(() => {
-    if (!localStorage.getItem("winner_token")) {
-      window.location.href = "/login";
-    } else {
-      setAuthed(true);
-    }
-  }, []);
+  const guard = useAuthGuard();
 
   useEffect(() => {
     // Read theme state
@@ -81,7 +74,8 @@ export default function DashboardLayout({
     window.dispatchEvent(new Event("storage"));
   };
 
-  if (!authed) return null;
+  if (guard.status === "checking" || guard.status === "redirecting") return null;
+  if (guard.status === "forbidden") return <ForbiddenScreen role={guard.role} />;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-slate-100 flex transition-colors duration-200">

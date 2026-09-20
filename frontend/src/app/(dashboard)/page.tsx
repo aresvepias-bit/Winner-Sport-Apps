@@ -10,9 +10,12 @@ import DashboardRecentOrders from "@/components/dashboard/DashboardRecentOrders"
 import LowStockAlert from "@/components/dashboard/LowStockAlert";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import { useLowStock } from "@/lib/useLowStock";
+import { canAccess } from "@/lib/routeAccess";
+import { getStoredUser } from "@/lib/session";
 
 export default function DashboardPage() {
-  const { items: lowStockItems, reload: reloadLowStock } = useLowStock();
+  // Alert stok memakai endpoint inventori; role tanpa akses inventori tidak perlu memanggilnya.
+  const { items: lowStockItems, reload: reloadLowStock } = useLowStock(canAccess(getStoredUser()?.role, "/inventory"));
   const [loading, setLoading] = useState(true);
   const [hidePrices, setHidePrices] = useState(false);
   const [stats, setStats] = useState<any>(null);

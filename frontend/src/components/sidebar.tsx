@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,15 +16,31 @@ import {
   ChevronRight,
   LogOut,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  type LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLowStock } from "@/lib/useLowStock";
+import { canAccess } from "@/lib/routeAccess";
+import { getStoredUser } from "@/lib/session";
 
-const allMenuGroups = [
+interface MenuItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: string;
+  badgeColor?: string;
+}
+
+interface MenuGroup {
+  title: string;
+  items: MenuItem[];
+}
+
+// Hak akses per menu ada di lib/routeAccess.ts (dipakai juga oleh guard halaman).
+const allMenuGroups: MenuGroup[] = [
   {
     title: "OVERVIEW & EXECUTIVE",
-    roles: ["OWNER", "ADMIN", "ACCOUNTING", "SALES"],
     items: [
       { name: "Cockpit Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Laba Rugi (P&L)", href: "/accounting", icon: TrendingUp },
@@ -32,21 +48,18 @@ const allMenuGroups = [
   },
   {
     title: "MANUFAKTUR & PRODUKSI",
-    roles: ["OWNER", "ADMIN", "PRODUCTION", "WAREHOUSE"],
     items: [
       { name: "SPK (Work Order)", href: "/production", icon: Scissors, badge: "PROD", badgeColor: "bg-blue-600 text-white" },
     ],
   },
   {
     title: "PENJUALAN & ORDER",
-    roles: ["OWNER", "ADMIN", "SALES", "ACCOUNTING"],
     items: [
       { name: "Order Penjualan", href: "/sales", icon: ShoppingCart },
     ],
   },
   {
     title: "LOGISTIK & INVENTORI",
-    roles: ["OWNER", "ADMIN", "WAREHOUSE", "PRODUCTION"],
     items: [
       { name: "Persediaan & Stok", href: "/inventory", icon: Package },
       { name: "Order Bahan (PO)", href: "/purchasing", icon: Truck },
@@ -54,7 +67,6 @@ const allMenuGroups = [
   },
   {
     title: "MASTER & KONFIGURASI",
-    roles: ["OWNER", "ADMIN", "PRODUCTION"],
     items: [
       { name: "Master Data", href: "/master", icon: Layers },
     ],
@@ -72,33 +84,29 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
   const pathname = usePathname();
   const isActuallyOpen = isMobile ? true : isOpen;
 
-  const [userName, setUserName] = useState("Aris Setiyono");
-  const [userRole, setUserRole] = useState("OWNER");
-  const [showRoleSelector, setShowRoleSelector] = useState(false);
-  const { items: lowStockItems } = useLowStock();
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem("winner_user");
-    if (savedUser) {
-      try {
-        const u = JSON.parse(savedUser);
-        if (u.name) setUserName(u.name);
-        if (u.role) setUserRole(u.role);
-      } catch (e) {
-        console.error(e);
-      }
+  // Role asli dari server (diverifikasi guard di layout). Pratinjau hanya berlaku untuk OWNER dan
+  // hanya mengubah menu yang tampil; hak akses sebenarnya tetap ditentukan role asli di backend.
+  const [userName] = useState(() => getStoredUser()?.name || "");
+  const [realRole] = useState(() => getStoredUser()?.role || "");
+  const [previewRole, setPreviewRole] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("winner_preview_role");
+    } catch {
+      return null;
     }
-  }, []);
+  });
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const isOwner = realRole === "OWNER";
+  const userRole = (isOwner && previewRole) || realRole;
+  const { items: lowStockItems } = useLowStock(canAccess(realRole, "/inventory"));
 
   const handleSwitchRole = (newRole: string) => {
-    setUserRole(newRole);
-    const saved = localStorage.getItem("winner_user");
-    if (saved) {
-      try {
-        const u = JSON.parse(saved);
-        u.role = newRole;
-        localStorage.setItem("winner_user", JSON.stringify(u));
-      } catch (e) {}
+    if (newRole === "OWNER") {
+      setPreviewRole(null);
+      localStorage.removeItem("winner_preview_role");
+    } else {
+      setPreviewRole(newRole);
+      localStorage.setItem("winner_preview_role", newRole);
     }
     setShowRoleSelector(false);
   };
@@ -114,11 +122,14 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
   const handleLogout = () => {
     localStorage.removeItem("winner_token");
     localStorage.removeItem("winner_user");
+    localStorage.removeItem("winner_preview_role");
     window.location.href = "/login";
   };
 
   // Filter menus based on active role
-  const filteredMenuGroups = allMenuGroups.filter((g) => g.roles.includes(userRole));
+  const filteredMenuGroups = allMenuGroups
+    .map((g) => ({ ...g, items: g.items.filter((i) => canAccess(userRole, i.href)) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <aside
@@ -223,11 +234,11 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
       {/* User Footer GLC Style with RBAC Role Switcher */}
       <div className={cn("border-t border-slate-100 dark:border-[#1a2236] bg-slate-50 dark:bg-[#090e1a] relative", isActuallyOpen ? "p-4 space-y-3" : "p-3 flex flex-col items-center")}>
         {/* Role Selector Popup */}
-        {showRoleSelector && isActuallyOpen && (
+        {isOwner && showRoleSelector && isActuallyOpen && (
           <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-3 shadow-2xl space-y-2 z-50 text-xs">
             <div className="flex items-center gap-1.5 text-slate-500 font-bold text-[10px] uppercase">
               <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
-              <span>Ganti Peran Hak Akses (RBAC)</span>
+              <span>Lihat menu sebagai (pratinjau)</span>
             </div>
             <div className="space-y-1">
               {["OWNER", "ADMIN", "PRODUCTION", "WAREHOUSE", "SALES", "ACCOUNTING"].map((r) => (
@@ -256,9 +267,9 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
           )}
         >
           <div
-            onClick={() => isActuallyOpen && setShowRoleSelector(!showRoleSelector)}
+            onClick={() => isOwner && isActuallyOpen && setShowRoleSelector(!showRoleSelector)}
             className="flex items-center gap-2.5 overflow-hidden cursor-pointer"
-            title="Klik untuk ganti Role (RBAC)"
+            title={isOwner ? "Klik untuk pratinjau menu peran lain" : undefined}
           >
             <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md shadow-blue-600/20 shrink-0">
               {getInitials(userName)}
@@ -268,7 +279,11 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
                 <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate leading-none" title={userName}>{userName}</p>
                 <div className="flex items-center gap-1 mt-1">
                   <span className="text-[9px] text-red-600 dark:text-red-400 font-black uppercase tracking-wider">{userRole}</span>
-                  <span className="text-[9px] text-slate-400">&bull; Ganti</span>
+                  {isOwner && (
+                    <span className="text-[9px] text-slate-400">
+                      &bull; {previewRole ? "Pratinjau" : "Ganti"}
+                    </span>
+                  )}
                 </div>
               </div>
             )}

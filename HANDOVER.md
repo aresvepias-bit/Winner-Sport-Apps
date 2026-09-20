@@ -180,7 +180,9 @@ cd backend; node api/index.js
 - Role = enum `Role` di `schema.prisma`: `OWNER, ADMIN, WAREHOUSE, PRODUCTION, SALES, ACCOUNTING`. OWNER selalu lolos.
 - Kebijakan per modul ada di `backend/api/rolePolicy.js` (mengikuti menu di `sidebar.tsx`). Master data: baca untuk semua role yang login, tulis hanya ADMIN/PRODUCTION; data karyawan hanya ADMIN/PRODUCTION.
 - Backend **menolak start** bila `JWT_SECRET` kosong atau sama dengan default lama (default lama sudah ter-commit → dianggap bocor).
-- Pengganti role di sidebar hanya mengubah menu yang tampil (kosmetik); hak akses sebenarnya ditentukan role di database.
+- **Frontend:** `frontend/src/lib/routeAccess.ts` = daftar role per halaman (cermin `rolePolicy.js`; ubah keduanya bersamaan). Dipakai sidebar (menu per item) dan `useAuthGuard` di `lib/session.ts`.
+- Guard di `(dashboard)/layout.tsx`: tanpa token → `/login`; role diverifikasi ke `/auth/me` tiap load halaman penuh (bukan cuma percaya localStorage); halaman terlarang → dialihkan ke halaman pertama yang boleh (`homeFor`); role tanpa halaman sama sekali → layar "Akses ditolak".
+- Pengganti role di sidebar kini hanya untuk **OWNER** dan berupa pratinjau menu (`winner_preview_role`); tidak mengubah akses. Hak akses sebenarnya = role di database.
 
 ## 🧭 Perilaku Data di Frontend
 
@@ -196,7 +198,7 @@ cd backend; node api/index.js
 - [x] Alert stok minimum (banner dashboard + badge sidebar)
 - [x] Pagination tabel daftar (sisi klien, 10 baris/halaman; mutasi stok 15). Catatan: `/inventory/movements` dibatasi 100 baris oleh backend
 - [x] Pecah `master/page.tsx` (358 → 74 baris): `masterEntities.ts` (endpoint + pesan per entitas), `useMasterData`, `useMasterCrud`, `MasterTabViews`, `MasterModals`
-- [ ] Guard per role di sisi halaman frontend (akses via URL langsung)
+- [x] Guard per role di sisi halaman frontend (akses via URL langsung)
 - [ ] **WAJIB sebelum deploy:** ganti password akun default di database — `cd backend && node scripts/set-password.js owner@winnersport.com` (ulangi untuk `admin@winnersport.com`). Backend mencetak peringatan `[SECURITY]` saat start selama masih ada akun ber-password `admin123` (password itu ada di riwayat git → publik). Kotak kredensial & prefill di halaman login sudah dihapus.
 - [ ] Export `.xlsx` sungguhan (CSV berkoma bisa menumpuk di satu kolom pada Excel regional Indonesia)
 - [ ] Deploy ke VPS via PM2 (`ecosystem.config.js` sudah ada di root) — set `JWT_SECRET` baru di environment server

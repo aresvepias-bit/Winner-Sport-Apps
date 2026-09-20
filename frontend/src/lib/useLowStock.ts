@@ -17,11 +17,16 @@ export interface LowStockItem {
  * Mengambil daftar item yang stoknya <= minimumStock dari /inventory/summary.
  * Gagal fetch dianggap "tidak ada alert" agar UI tidak rusak.
  */
-export function useLowStock() {
+export function useLowStock(enabled = true) {
   const [items, setItems] = useState<LowStockItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!enabled) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.get("/inventory/summary");
@@ -34,7 +39,7 @@ export function useLowStock() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     load();
