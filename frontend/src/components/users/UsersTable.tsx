@@ -1,7 +1,8 @@
 "use client";
 
-import { Pencil, KeyRound, UserX, UserCheck } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { useState } from "react";
+import { Pencil, KeyRound, UserX, UserCheck, Eye, EyeOff } from "lucide-react";
+import { formatDate, maskEmail } from "@/lib/utils";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/common/Pagination";
 import { ROLE_LABELS, ROLE_BADGE, type AppUser } from "@/components/users/userRoles";
@@ -24,6 +25,17 @@ export default function UsersTable({
   onToggleActive
 }: UsersTableProps) {
   const pg = usePagination(users, 10);
+  // Email disamarkan; dibuka per baris hanya selama halaman ini dibuka.
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+
+  const toggleEmail = (id: string) => {
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
@@ -58,7 +70,21 @@ export default function UsersTable({
                       {u.name}
                       {isSelf && <span className="ml-1.5 text-[10px] text-slate-400">(Anda)</span>}
                     </td>
-                    <td className="py-3.5 font-mono text-slate-600 dark:text-slate-400">{u.email}</td>
+                    <td className="py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-slate-600 dark:text-slate-400">
+                          {revealed.has(u.id) ? u.email : maskEmail(u.email)}
+                        </span>
+                        <button
+                          onClick={() => toggleEmail(u.id)}
+                          title={revealed.has(u.id) ? "Sembunyikan email" : "Tampilkan email"}
+                          aria-label={revealed.has(u.id) ? "Sembunyikan email" : "Tampilkan email"}
+                          className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                        >
+                          {revealed.has(u.id) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </td>
                     <td className="py-3.5">
                       <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] border ${ROLE_BADGE[u.role] || ""}`}>
                         {ROLE_LABELS[u.role] || u.role}
