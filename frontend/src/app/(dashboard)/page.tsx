@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { canAccess } from "@/lib/routeAccess";
+import { getStoredUser } from "@/lib/session";
+import { useLowStock } from "@/lib/useLowStock";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardKpiGrid from "@/components/dashboard/DashboardKpiGrid";
 import DashboardTrendChart from "@/components/dashboard/DashboardTrendChart";
+import DashboardFinancePanel from "@/components/dashboard/DashboardFinancePanel";
+import DashboardTopProducts from "@/components/dashboard/DashboardTopProducts";
 import DashboardQuickNav from "@/components/dashboard/DashboardQuickNav";
-import DashboardRecentOrders from "@/components/dashboard/DashboardRecentOrders";
 import LowStockAlert from "@/components/dashboard/LowStockAlert";
 import ErrorBanner from "@/components/common/ErrorBanner";
-import { useLowStock } from "@/lib/useLowStock";
-import { canAccess } from "@/lib/routeAccess";
-import { getStoredUser } from "@/lib/session";
 
 export default function DashboardPage() {
   // Alert stok memakai endpoint inventori; role tanpa akses inventori tidak perlu memanggilnya.
@@ -30,9 +31,7 @@ export default function DashboardPage() {
     setLoadError("");
     try {
       const data = await api.get("/dashboard/stats");
-      if (data && data.sales) {
-        setStats(data);
-      }
+      if (data && data.sales) setStats(data);
     } catch (err: any) {
       setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
@@ -48,54 +47,61 @@ export default function DashboardPage() {
     return () => window.removeEventListener("storage", checkHidePrices);
   }, []);
 
+  const refreshAll = () => {
+    loadStats();
+    reloadLowStock();
+  };
+
   return (
     <div className="space-y-6">
-      {/* 1. Executive Cockpit Header */}
-      <DashboardHeader
-        loading={loading}
-        onRefresh={() => {
-          loadStats();
-          reloadLowStock();
-        }}
-      />
+      {/* 1. Header */}
+      <DashboardHeader loading={loading} onRefresh={refreshAll} />
 
-      <ErrorBanner message={loadError} onRetry={loadStats} />
+      <ErrorBanner message={loadError} onRetry={refreshAll} />
 
-      {/* 1b. Alert stok di bawah minimum */}
+      {/* 2. Alert stok di bawah minimum */}
       <LowStockAlert items={lowStockItems} />
 
-      {/* 2. Executive Cockpit Data or Skeleton Loader */}
       {loading && !stats ? (
         <div className="space-y-6 animate-pulse">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-5 shadow-sm" />
+              <div key={i} className="h-40 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl" />
             ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 h-72 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl shadow-sm" />
-            <div className="h-72 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl shadow-sm" />
+            <div className="lg:col-span-2 h-96 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl" />
+            <div className="h-96 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl" />
           </div>
-          <div className="h-64 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl shadow-sm" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-72 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl" />
+            <div className="h-72 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl" />
+          </div>
         </div>
       ) : stats ? (
         <>
-          {/* Key Performance Indicators Grid */}
+          {/* 3. Angka utama */}
           <DashboardKpiGrid stats={stats} hidePrices={hidePrices} />
 
-          {/* Operational Charts & Quick Financial Action Shortcuts */}
+          {/* 4. Tren & posisi keuangan */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <DashboardTrendChart trendData={stats.trendData} />
-            <DashboardQuickNav
+            <DashboardTrendChart trendData={stats.trendData || []} hidePrices={hidePrices} />
+            <DashboardFinancePanel
               cashPosition={stats.cash?.position || 0}
               receivable={stats.debts?.receivable || 0}
               payable={stats.debts?.payable || 0}
+              production={stats.production || { activeCount: 0, completedCount: 0 }}
               hidePrices={hidePrices}
             />
           </div>
 
-          {/* Recent Sales Orders Table */}
-          <DashboardRecentOrders recentOrders={stats.recentOrders || []} hidePrices={hidePrices} />
+          {/* 5. Produk teratas & pintasan */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <DashboardTopProducts products={stats.topProducts || []} hidePrices={hidePrices} />
+            </div>
+            <DashboardQuickNav />
+          </div>
         </>
       ) : null}
     </div>

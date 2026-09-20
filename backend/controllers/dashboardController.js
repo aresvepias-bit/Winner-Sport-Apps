@@ -1,66 +1,111 @@
 const prisma = require('../api/db');
 
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const TREND_MONTHS = 6;
+
+/** Kunci bulan "2026-09" untuk mengelompokkan data. */
+const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+/** Kodi dicatat per kodi; disetarakan ke pcs agar cocok dengan HPP per pcs. */
+function toPcs(item) {
+  const qty = Number(item.quantity) || 0;
+  return item.unitName && item.unitName.toLowerCase() === 'kodi' ? qty * 20 : qty;
+}
+
 /**
- * Controller: Dashboard Operasional & Agregasi KPI
+ * Controller: Dashboard Operasional & Agregasi KPI.
+ * Semua angka dihitung dari data sebenarnya — tidak ada nilai perkiraan/karangan.
  */
 const dashboardController = {
   // GET /api/dashboard/stats
   async getStats(req, res) {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      // Awal jendela tren: awal bulan, (TREND_MONTHS - 1) bulan ke belakang.
+      const trendStart = new Date(now.getFullYear(), now.getMonth() - (TREND_MONTHS - 1), 1);
 
-      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const [allOrders, expenses, rawMaterials, products] = await Promise.all([
+        prisma.salesOrder.findMany({
+          where: { status: { not: 'CANCELLED' } },
+          include: { items: { include: { product: true } } },
+          orderBy: { createdAt: 'desc' }
+        }),
+        prisma.expense.findMany(),
+        prisma.rawMaterial.findMany(),
+        prisma.product.findMany()
+      ]);
 
-      // 1. Sales & Invoicing
-      const allOrders = await prisma.salesOrder.findMany({
-        where: { status: { not: 'CANCELLED' } },
-        include: {
-          items: { include: { product: true } },
-          customer: true
-        },
-        orderBy: { createdAt: 'desc' }
-      });
+      // --- Kerangka bulan untuk tren (selalu 6 bulan, bulan kosong tetap tampil sebagai 0)
+      const buckets = new Map();
+      const trendOrder = [];
+      for (let i = 0; i < TREND_MONTHS; i++) {
+        const d = new Date(trendStart.getFullYear(), trendStart.getMonth() + i, 1);
+        const key = monthKey(d);
+        trendOrder.push(key);
+        buckets.set(key, { month: MONTH_LABELS[d.getMonth()], year: d.getFullYear(), revenue: 0, hpp: 0, expenses: 0, orderCount: 0 });
+      }
 
+      // --- Penjualan, HPP, dan produk terlaris
       let totalRevenue = 0;
       let totalHpp = 0;
       let todaySales = 0;
       let monthSales = 0;
+      let itemsWithHpp = 0;
+      let itemsTotal = 0;
+
+      const productSales = new Map();
 
       for (const order of allOrders) {
+        const created = new Date(order.createdAt);
         const orderTotal = Number(order.totalAmount);
         totalRevenue += orderTotal;
+        if (created >= today) todaySales += orderTotal;
+        if (created >= firstDayOfMonth) monthSales += orderTotal;
 
-        if (new Date(order.createdAt) >= today) {
-          todaySales += orderTotal;
-        }
-        if (new Date(order.createdAt) >= firstDayOfMonth) {
-          monthSales += orderTotal;
+        const bucket = buckets.get(monthKey(created));
+        if (bucket) {
+          bucket.revenue += orderTotal;
+          bucket.orderCount += 1;
         }
 
         for (const item of order.items) {
-          const qtyPcs = (item.unitName && item.unitName.toLowerCase() === 'kodi') ? item.quantity * 20 : item.quantity;
-          const itemStandardCost = item.product ? Number(item.product.standardCost) : 0;
-          totalHpp += (qtyPcs * itemStandardCost);
+          itemsTotal += 1;
+          const pcs = toPcs(item);
+          // Pesanan custom tanpa produk master tidak punya HPP standar — tidak dikarang.
+          const cost = item.product ? Number(item.product.standardCost) : 0;
+          if (item.product) itemsWithHpp += 1;
+
+          const itemHpp = pcs * cost;
+          totalHpp += itemHpp;
+          if (bucket) bucket.hpp += itemHpp;
+
+          const nama = item.product?.name || item.customDescription || 'Pesanan Custom';
+          const agg = productSales.get(nama) || { name: nama, revenue: 0, qtyPcs: 0 };
+          agg.revenue += Number(item.subtotal ?? pcs * Number(item.pricePerUnit || 0));
+          agg.qtyPcs += pcs;
+          productSales.set(nama, agg);
         }
       }
 
-      const grossProfit = totalRevenue - totalHpp;
+      // --- Beban operasional
+      let totalExpenses = 0;
+      for (const e of expenses) {
+        const amount = Number(e.amount);
+        totalExpenses += amount;
+        const bucket = buckets.get(monthKey(new Date(e.date)));
+        if (bucket) bucket.expenses += amount;
+      }
 
-      // 2. Expenses & Net Profit
-      const expenses = await prisma.expense.findMany();
-      const totalExpenses = expenses.reduce((acc, curr) => acc + Number(curr.amount), 0);
+      const grossProfit = totalRevenue - totalHpp;
       const netProfit = grossProfit - totalExpenses;
 
-      // 3. Persediaan (Inventory Valuation)
-      const rawMaterials = await prisma.rawMaterial.findMany();
-      const products = await prisma.product.findMany();
+      // --- Persediaan
+      const rawMaterialValue = rawMaterials.reduce((acc, m) => acc + Number(m.currentStock) * Number(m.standardCost), 0);
+      const productValue = products.reduce((acc, p) => acc + Number(p.currentStock) * Number(p.standardCost), 0);
 
-      const rawMaterialValue = rawMaterials.reduce((acc, m) => acc + (Number(m.currentStock) * Number(m.standardCost)), 0);
-      const productValue = products.reduce((acc, p) => acc + (Number(p.currentStock) * Number(p.standardCost)), 0);
-      const totalInventoryValue = rawMaterialValue + productValue;
-
-      // 4. Kas & Bank Position
+      // --- Kas & bank
       const cashAccounts = await prisma.account.findMany({
         where: {
           OR: [
@@ -69,75 +114,64 @@ const dashboardController = {
             { code: { startsWith: '10' } },
             { code: { startsWith: '11' } }
           ]
-        }
+        },
+        orderBy: { code: 'asc' }
       });
       const cashPosition = cashAccounts.reduce((acc, a) => acc + Number(a.balance), 0);
 
-      // 5. Work Orders (Produksi SPK)
-      const activeWorkOrders = await prisma.workOrder.count({
-        where: { status: { in: ['DRAFT', 'PENDING_MATERIAL', 'IN_PROGRESS'] } }
-      });
-      const completedWorkOrders = await prisma.workOrder.count({
-        where: { status: 'COMPLETED' }
-      });
+      // --- Produksi
+      const workOrders = await prisma.workOrder.findMany({ select: { status: true } });
+      const productionByStatus = {};
+      for (const wo of workOrders) productionByStatus[wo.status] = (productionByStatus[wo.status] || 0) + 1;
+      const activeStatuses = ['DRAFT', 'PENDING_MATERIAL', 'IN_PROGRESS'];
+      const activeCount = activeStatuses.reduce((acc, s) => acc + (productionByStatus[s] || 0), 0);
 
-      // 6. Piutang (Receivables) & Hutang (Payables)
-      const unpaidInvoices = await prisma.invoice.findMany({
-        where: { status: { in: ['UNPAID', 'PARTIAL'] } }
-      });
-      const totalReceivable = unpaidInvoices.reduce((acc, inv) => acc + (Number(inv.totalAmount) - Number(inv.paidAmount)), 0);
-
-      const unpaidPOs = await prisma.purchaseOrder.findMany({
-        where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } }
-      });
+      // --- Piutang & hutang
+      const [unpaidInvoices, unpaidPOs] = await Promise.all([
+        prisma.invoice.findMany({ where: { status: { in: ['UNPAID', 'PARTIAL'] } } }),
+        prisma.purchaseOrder.findMany({ where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } })
+      ]);
+      const totalReceivable = unpaidInvoices.reduce((acc, i) => acc + (Number(i.totalAmount) - Number(i.paidAmount)), 0);
       const totalPayable = unpaidPOs.reduce((acc, po) => acc + (Number(po.totalAmount) - Number(po.paidAmount)), 0);
 
-      // 7. Trend Penjualan Bulanan (untuk chart Recharts)
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-      const currentMonthIdx = today.getMonth();
+      const trendData = trendOrder.map((key) => {
+        const b = buckets.get(key);
+        return { ...b, netProfit: b.revenue - b.hpp - b.expenses };
+      });
 
-      const trendData = [];
-      for (let i = 5; i >= 0; i--) {
-        const targetMonth = (currentMonthIdx - i + 12) % 12;
-        trendData.push({
-          month: months[targetMonth],
-          revenue: i === 0 ? monthSales : Math.max(0, Math.round(monthSales * (0.8 + (Math.sin(i) * 0.2)))),
-          hpp: i === 0 ? Math.round(monthSales * 0.65) : Math.max(0, Math.round(monthSales * 0.65 * (0.8 + (Math.sin(i) * 0.2))))
-        });
-      }
+      const topProducts = [...productSales.values()]
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
 
       res.json({
-        sales: {
-          today: todaySales,
-          thisMonth: monthSales,
-          total: totalRevenue,
-          orderCount: allOrders.length
-        },
+        sales: { today: todaySales, thisMonth: monthSales, total: totalRevenue, orderCount: allOrders.length },
         profitability: {
           grossProfit,
           netProfit,
+          totalHpp,
           totalExpenses,
           margin: totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0
         },
         inventory: {
           rawMaterialValue,
           productValue,
-          totalValue: totalInventoryValue,
-          lowStockAlertCount: rawMaterials.filter(m => Number(m.currentStock) <= Number(m.minimumStock)).length
+          totalValue: rawMaterialValue + productValue,
+          lowStockAlertCount: rawMaterials.filter((m) => Number(m.currentStock) <= Number(m.minimumStock)).length
         },
         production: {
-          activeCount: activeWorkOrders,
-          completedCount: completedWorkOrders
+          activeCount,
+          completedCount: productionByStatus.COMPLETED || 0,
+          byStatus: productionByStatus
         },
         cash: {
-          position: cashPosition
+          position: cashPosition,
+          accounts: cashAccounts.map((a) => ({ code: a.code, name: a.name, balance: Number(a.balance) }))
         },
-        debts: {
-          receivable: totalReceivable,
-          payable: totalPayable
-        },
+        debts: { receivable: totalReceivable, payable: totalPayable },
         trendData,
-        recentOrders: allOrders.slice(0, 5)
+        topProducts,
+        // Dipakai UI untuk memberi tahu bila HPP belum lengkap, alih-alih diam-diam melebihkan laba.
+        coverage: { itemsTotal, itemsWithHpp }
       });
     } catch (err) {
       console.error('[dashboardController getStats error]:', err);

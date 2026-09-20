@@ -230,6 +230,17 @@ Menghapus akun = **menonaktifkan** (`isActive: false`), bukan hapus baris, karen
 
 ---
 
+## 📊 Dashboard & Grafik
+
+- **Semua angka dashboard dihitung dari transaksi nyata.** Sebelumnya `trendData` mengarang 5 dari 6 bulan (`monthSales * (0.8 + sin(i)*0.2)`); kini dikelompokkan per bulan dari `salesOrder` + `expense`.
+- Bulan tanpa transaksi tampil sebagai 0, bukan disembunyikan atau ditebak. Bila baru satu bulan yang berisi, grafik memberi catatan sejak kapan data tersedia.
+- Item pesanan custom tanpa produk master **tidak punya HPP standar**, jadi tidak dihitung — lihat `coverage` di respons `/dashboard/stats` untuk tahu berapa item yang HPP-nya sudah lengkap. Kalau banyak item tanpa HPP, laba kotor akan terlihat lebih besar dari sebenarnya.
+- Warna grafik ada di `frontend/src/lib/chartTheme.ts`. Terang dan gelap punya corak sendiri dan **keduanya sudah lolos pemeriksaan palet** (kelerengan, kroma, keterbedaan bagi buta warna, kontras). Kalau menambah seri, validasi ulang — jangan dikira-kira.
+- Urutan warna seri tetap (merah, biru, amber) dan mengikuti entitas, bukan peringkat.
+- "Order Penjualan Terbaru" sudah dihapus dari dashboard atas permintaan.
+
+---
+
 ## 🧪 Testing
 
 ```powershell
