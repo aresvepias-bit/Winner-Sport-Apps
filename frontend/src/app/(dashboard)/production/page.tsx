@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { exportToCsv } from "@/lib/exportUtils";
 import ProductionHeader from "@/components/production/ProductionHeader";
 import WorkOrdersTable, { WorkOrder } from "@/components/production/WorkOrdersTable";
 import CompleteWorkOrderModal from "@/components/production/CompleteWorkOrderModal";
@@ -76,6 +77,34 @@ export default function ProductionPage() {
   const handleOpenPrint = (wo: WorkOrder) => {
     setSelectedWO(wo);
     setShowPrintModal(true);
+  };
+
+  const handleExportSPK = () => {
+    const headers = [
+      "No. SPK",
+      "Produk Target",
+      "Target Qty",
+      "Hasil Jadi",
+      "Reject/Scrap",
+      "Biaya Bahan (Rp)",
+      "HPP Aktual / pcs (Rp)",
+      "Tenggat Waktu",
+      "Status",
+      "Catatan"
+    ];
+    const rows = workOrders.map((wo) => [
+      wo.woNumber,
+      wo.product?.name || "-",
+      wo.targetQty,
+      wo.completedQty,
+      wo.scrapQty ?? 0,
+      wo.materialCost,
+      wo.hppPerPcs ?? 0,
+      new Date(wo.dueDate).toLocaleDateString("id-ID"),
+      wo.status,
+      wo.notes || "-"
+    ]);
+    exportToCsv("Daftar_SPK_Produksi_Winner_Sport", headers, rows);
   };
 
   const handleCreateSPK = async (formData: {
@@ -162,6 +191,7 @@ export default function ProductionPage() {
         workOrders={workOrders}
         onOpenCompleteModal={handleOpenComplete}
         onOpenPrintModal={handleOpenPrint}
+        onExportCsv={handleExportSPK}
       />
 
       {/* 3. Create Work Order Modal */}

@@ -89,6 +89,35 @@ export default function InventoryPage() {
     exportToCsv("Kartu_Mutasi_Stok_Winner_Sport", headers, rows);
   };
 
+  const handleExportMaterials = () => {
+    const headers = ["SKU", "Nama Bahan", "Stok Saat Ini", "Satuan", "Stok Minimum", "Nilai Per Satuan (Rp)", "Total Nilai Stok (Rp)", "Status"];
+    const rows = materials.map((m) => [
+      m.sku,
+      m.name,
+      Number(m.currentStock),
+      m.unit?.symbol || "kg",
+      Number(m.minimumStock),
+      Number(m.standardCost),
+      Number(m.currentStock) * Number(m.standardCost),
+      Number(m.currentStock) <= Number(m.minimumStock) ? "Perlu Restock" : "Cukup"
+    ]);
+    exportToCsv("Persediaan_Bahan_Baku_Winner_Sport", headers, rows);
+  };
+
+  const handleExportProducts = () => {
+    const headers = ["SKU", "Nama Produk", "Stok (Pcs)", "Kodi", "Sisa Pcs", "HPP Per Pcs (Rp)", "Nilai HPP Persediaan (Rp)"];
+    const rows = products.map((p) => [
+      p.sku,
+      p.name,
+      Number(p.currentStock),
+      Math.floor(Number(p.currentStock) / 20),
+      Number(p.currentStock) % 20,
+      Number(p.standardCost),
+      Number(p.currentStock) * Number(p.standardCost)
+    ]);
+    exportToCsv("Persediaan_Produk_Jadi_Winner_Sport", headers, rows);
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Header */}
@@ -98,8 +127,12 @@ export default function InventoryPage() {
       <InventoryNavTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* 3. Tab Views */}
-      {activeTab === "materials" && <MaterialsInventoryTable materials={materials} />}
-      {activeTab === "products" && <ProductsInventoryTable products={products} />}
+      {activeTab === "materials" && (
+        <MaterialsInventoryTable materials={materials} onExportCsv={handleExportMaterials} />
+      )}
+      {activeTab === "products" && (
+        <ProductsInventoryTable products={products} onExportCsv={handleExportProducts} />
+      )}
       {activeTab === "movements" && (
         <StockMovementsTable movements={movements} onExportCsv={handleExportMovements} />
       )}

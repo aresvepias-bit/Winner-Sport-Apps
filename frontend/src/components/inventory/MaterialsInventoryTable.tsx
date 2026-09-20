@@ -1,6 +1,7 @@
 "use client";
 
 import { formatRupiah, formatNumber } from "@/lib/utils";
+import ExportButton from "@/components/common/ExportButton";
 
 interface MaterialItem {
   id: string;
@@ -14,16 +15,20 @@ interface MaterialItem {
 
 interface MaterialsInventoryTableProps {
   materials: MaterialItem[];
+  onExportCsv?: () => void;
 }
 
-export default function MaterialsInventoryTable({ materials }: MaterialsInventoryTableProps) {
+export default function MaterialsInventoryTable({ materials, onExportCsv }: MaterialsInventoryTableProps) {
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
-      <div className="mb-4">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Persediaan Bahan Baku Aktif</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Kuantitas stok bahan mentah saat ini beserta valuasi nilai persediaan
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Persediaan Bahan Baku Aktif</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Kuantitas stok bahan mentah saat ini beserta valuasi nilai persediaan
+          </p>
+        </div>
+        {onExportCsv && <ExportButton onClick={onExportCsv} label="Ekspor Stok Bahan CSV" />}
       </div>
 
       <div className="overflow-x-auto">

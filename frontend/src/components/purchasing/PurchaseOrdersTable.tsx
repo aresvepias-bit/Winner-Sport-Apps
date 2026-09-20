@@ -1,6 +1,7 @@
 "use client";
 
 import { formatRupiah, formatDate, formatNumber } from "@/lib/utils";
+import ExportButton from "@/components/common/ExportButton";
 
 export interface PurchaseOrderItem {
   id: string;
@@ -18,16 +19,20 @@ export interface PurchaseOrderItem {
 
 interface PurchaseOrdersTableProps {
   orders: PurchaseOrderItem[];
+  onExportCsv?: () => void;
 }
 
-export default function PurchaseOrdersTable({ orders }: PurchaseOrdersTableProps) {
+export default function PurchaseOrdersTable({ orders, onExportCsv }: PurchaseOrdersTableProps) {
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
-      <div className="mb-4">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Purchase Order Bahan</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Pesanan pembelian bahan baku tekstil ke mitra pabrik &amp; distributor kain
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Purchase Order Bahan</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Pesanan pembelian bahan baku tekstil ke mitra pabrik &amp; distributor kain
+          </p>
+        </div>
+        {onExportCsv && <ExportButton onClick={onExportCsv} label="Ekspor PO CSV" />}
       </div>
 
       <div className="overflow-x-auto">

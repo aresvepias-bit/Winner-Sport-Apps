@@ -2,6 +2,7 @@
 
 import { Printer } from "lucide-react";
 import { formatRupiah, formatDate, formatNumber } from "@/lib/utils";
+import ExportButton from "@/components/common/ExportButton";
 
 export interface WorkOrder {
   id: string;
@@ -21,18 +22,23 @@ interface WorkOrdersTableProps {
   workOrders: WorkOrder[];
   onOpenCompleteModal: (wo: WorkOrder) => void;
   onOpenPrintModal: (wo: WorkOrder) => void;
+  onExportCsv?: () => void;
 }
 
 export default function WorkOrdersTable({
   workOrders,
   onOpenCompleteModal,
-  onOpenPrintModal
+  onOpenPrintModal,
+  onExportCsv
 }: WorkOrdersTableProps) {
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
-      <div className="mb-4">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Antrean &amp; Riwayat SPK Produksi</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Progres pemotongan kain, perakitan, dan penjahitan</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Antrean &amp; Riwayat SPK Produksi</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Progres pemotongan kain, perakitan, dan penjahitan</p>
+        </div>
+        {onExportCsv && <ExportButton onClick={onExportCsv} label="Ekspor SPK CSV" />}
       </div>
 
       <div className="overflow-x-auto">

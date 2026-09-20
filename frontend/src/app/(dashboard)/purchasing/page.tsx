@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { exportToCsv } from "@/lib/exportUtils";
 import PurchasingHeader from "@/components/purchasing/PurchasingHeader";
 import PurchaseOrdersTable, { PurchaseOrderItem } from "@/components/purchasing/PurchaseOrdersTable";
 import CreatePurchaseOrderModal from "@/components/purchasing/CreatePurchaseOrderModal";
@@ -63,6 +64,21 @@ export default function PurchasingPage() {
     loadPurchasing();
   }, []);
 
+  const handleExportPO = () => {
+    const headers = ["No. PO", "Tanggal Order", "Supplier", "Bahan", "Qty", "Harga Satuan (Rp)", "Total Pembelian (Rp)", "Status"];
+    const rows = orders.map((po) => [
+      po.poNumber,
+      new Date(po.orderDate).toLocaleDateString("id-ID"),
+      po.supplier?.name || "-",
+      po.items?.map((i) => i.rawMaterial?.name).filter(Boolean).join("; ") || "-",
+      po.items?.reduce((sum, i) => sum + Number(i.quantity), 0) ?? 0,
+      po.items?.[0]?.unitPrice ?? 0,
+      po.totalAmount,
+      po.status
+    ]);
+    exportToCsv("Daftar_Purchase_Order_Winner_Sport", headers, rows);
+  };
+
   const handleCreatePO = async (formData: {
     supplierId: string;
     rawMaterialId: string;
@@ -108,7 +124,7 @@ export default function PurchasingPage() {
       />
 
       {/* 2. Purchase Orders Table */}
-      <PurchaseOrdersTable orders={orders} />
+      <PurchaseOrdersTable orders={orders} onExportCsv={handleExportPO} />
 
       {/* 3. Create PO Modal */}
       {showCreateModal && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { formatRupiah, formatNumber } from "@/lib/utils";
+import ExportButton from "@/components/common/ExportButton";
 
 interface ProductItem {
   id: string;
@@ -12,16 +13,20 @@ interface ProductItem {
 
 interface ProductsInventoryTableProps {
   products: ProductItem[];
+  onExportCsv?: () => void;
 }
 
-export default function ProductsInventoryTable({ products }: ProductsInventoryTableProps) {
+export default function ProductsInventoryTable({ products, onExportCsv }: ProductsInventoryTableProps) {
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
-      <div className="mb-4">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Persediaan Pakaian Jadi Siap Jual</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Stok barang jadi di gudang dengan kalkulasi konversi satuan kodian (1 Kodi = 20 Pcs)
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Persediaan Pakaian Jadi Siap Jual</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Stok barang jadi di gudang dengan kalkulasi konversi satuan kodian (1 Kodi = 20 Pcs)
+          </p>
+        </div>
+        {onExportCsv && <ExportButton onClick={onExportCsv} label="Ekspor Stok Produk CSV" />}
       </div>
 
       <div className="overflow-x-auto">

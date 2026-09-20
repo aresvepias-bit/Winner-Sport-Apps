@@ -7,8 +7,11 @@ import DashboardKpiGrid from "@/components/dashboard/DashboardKpiGrid";
 import DashboardTrendChart from "@/components/dashboard/DashboardTrendChart";
 import DashboardQuickNav from "@/components/dashboard/DashboardQuickNav";
 import DashboardRecentOrders from "@/components/dashboard/DashboardRecentOrders";
+import LowStockAlert from "@/components/dashboard/LowStockAlert";
+import { useLowStock } from "@/lib/useLowStock";
 
 export default function DashboardPage() {
+  const { items: lowStockItems, reload: reloadLowStock } = useLowStock();
   const [loading, setLoading] = useState(true);
   const [hidePrices, setHidePrices] = useState(false);
   const [stats, setStats] = useState<any>(null);
@@ -42,7 +45,16 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* 1. Executive Cockpit Header */}
-      <DashboardHeader loading={loading} onRefresh={loadStats} />
+      <DashboardHeader
+        loading={loading}
+        onRefresh={() => {
+          loadStats();
+          reloadLowStock();
+        }}
+      />
+
+      {/* 1b. Alert stok di bawah minimum */}
+      <LowStockAlert items={lowStockItems} />
 
       {/* 2. Executive Cockpit Data or Skeleton Loader */}
       {loading && !stats ? (
