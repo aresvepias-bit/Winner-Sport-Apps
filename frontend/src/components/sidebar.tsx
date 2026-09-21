@@ -22,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useLowStock } from "@/lib/useLowStock";
 import { canAccess } from "@/lib/routeAccess";
-import { getStoredUser } from "@/lib/session";
+import { logout, getStoredUser } from "@/lib/session";
 
 interface MenuItem {
   name: string;
@@ -69,6 +69,8 @@ const allMenuGroups: MenuGroup[] = [
     title: "MASTER & KONFIGURASI",
     items: [
       { name: "Master Data", href: "/master", icon: Layers },
+      { name: "Data Customer", href: "/customers", icon: Users },
+      { name: "Data Supplier", href: "/suppliers", icon: Building2 },
       { name: "Pengguna & Hak Akses", href: "/users", icon: Users },
     ],
   },
@@ -101,9 +103,8 @@ export default function Sidebar({ isOpen, setIsOpen, isMobile, mobileOpen }: Sid
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("winner_token");
-    localStorage.removeItem("winner_user");
-    window.location.href = "/login";
+    // Mencabut sesi di server dulu (token lama jadi tidak berlaku), baru bersihkan browser.
+    void logout();
   };
 
   // Filter menus berdasarkan modul yang diizinkan untuk pengguna ini

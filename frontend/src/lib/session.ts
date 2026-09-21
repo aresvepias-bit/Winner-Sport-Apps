@@ -23,6 +23,19 @@ export function getStoredUser(): SessionUser | null {
   }
 }
 
+/** Menghapus sesi di server lalu di browser. Tetap keluar walau server tidak terjangkau. */
+export async function logout(): Promise<void> {
+  try {
+    await api.post("/auth/logout");
+  } catch {
+    // Token mungkin sudah kedaluwarsa atau server mati; pengguna tetap harus keluar.
+  } finally {
+    localStorage.removeItem("winner_token");
+    localStorage.removeItem("winner_user");
+    window.location.href = "/login";
+  }
+}
+
 export type GuardStatus = "checking" | "ok" | "redirecting" | "forbidden";
 
 /**

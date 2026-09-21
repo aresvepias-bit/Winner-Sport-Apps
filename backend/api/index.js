@@ -70,6 +70,13 @@ const PORT = process.env.PORT || 5005;
 app.listen(PORT, () => {
   console.log(`[server] Winner Sport Backend API berjalan di http://localhost:${PORT}`);
   require('./defaultPasswordCheck').warnAboutDefaultPasswords();
+
+  // Catatan percobaan login yang sudah tenang dibuang berkala agar tabel tidak menumpuk.
+  const loginThrottle = require('./loginThrottle');
+  const bersihkan = () =>
+    loginThrottle.prune().catch((e) => console.warn('[loginThrottle] gagal membersihkan:', e.message));
+  bersihkan();
+  setInterval(bersihkan, 60 * 60 * 1000).unref();
 });
 
 module.exports = app;

@@ -180,6 +180,27 @@ cd backend; node api/index.js
 - Role = enum `Role` di `schema.prisma`: `OWNER, ADMIN, WAREHOUSE, PRODUCTION, SALES, ACCOUNTING`. **OWNER selalu lolos** dan tidak bisa dibatasi — ini yang menjaga sistem tidak bisa terkunci.
 - Backend **menolak start** bila `JWT_SECRET` kosong atau sama dengan default lama (default lama sudah ter-commit → dianggap bocor).
 
+### Pengamanan login (tahap 1)
+
+| Perlindungan | Cara kerja |
+|---|---|
+| **Batas percobaan** | Tabel `LoginThrottle`, dua kunci sekaligus: `email:<alamat>` dan `ip:<alamat>`. Per akun: kunci 1 menit pada kegagalan ke-5, naik ke 5 / 15 / 60 menit pada ke-7 / 10 / 15. Per IP lebih longgar (20 / 40 / 60). Disimpan di database, jadi tidak hilang saat server restart. |
+| **Pesan seragam** | Email asing, password salah, dan akun nonaktif semuanya dijawab "Email atau password salah." Perbandingan hash tetap dijalankan walau email tidak ada, agar keberadaan akun tidak terbaca dari selisih waktu respons. |
+| **Versi sesi** | `User.tokenVersion` ikut masuk token sebagai klaim `tv`. Naik saat logout, reset password, dan penonaktifan akun — semua token lama langsung ditolak. Token lama tanpa klaim `tv` juga ditolak. |
+| **Logout sungguhan** | `POST /api/auth/logout` menaikkan `tokenVersion`. Tanpa daftar sesi per perangkat, logout memang mengeluarkan **semua** perangkat; ini disengaja agar tombol keluar berarti. |
+| **Masa berlaku** | Token 12 jam (`JWT_EXPIRES_IN`), turun dari 7 hari. |
+| **Batas diam** | 30 menit (`SESSION_IDLE_MINUTES`), dilacak lewat `User.lastSeenAt` yang ditulis paling sering sekali per menit. |
+
+Catatan perilaku yang disengaja:
+- **Percobaan saat sedang terkunci tidak memperpanjang kunci.** Kalau dihitung, penyerang bisa menahan akun orang lain terkunci selamanya hanya dengan terus menembak.
+- **Email yang tidak terdaftar pun ikut dihitung.** Tanpa itu, pesan "terkunci" hanya muncul untuk email yang benar-benar ada — dan justru membocorkan akun mana yang terdaftar.
+- **Login berhasil hanya membersihkan hitungan email, bukan IP.** Satu login benar tidak boleh menghapus jejak puluhan kegagalan dari sumber yang sama.
+- Catatan lama dibersihkan otomatis tiap jam (`loginThrottle.prune()`).
+
+**Belum dikerjakan (tahap 2):** helmet, CORS daftar putih, batas body JSON turun dari 50 MB, bcrypt cost 12, dan riwayat login yang bisa dilihat OWNER. Token masih disimpan di `localStorage`, jadi masih terpapar XSS.
+
+**Lupa password tanpa email:** OWNER/ADMIN reset lewat menu Pengguna; kalau OWNER sendiri lupa, pakai `node scripts/set-password.js <email>` di terminal server. Keduanya sudah otomatis mencabut sesi lama.
+
 ### Sumber hak akses
 - Tabel **`RolePermission`** (role + module + allowed) = sumber utama, diubah lewat menu Pengguna & Hak Akses.
 - `backend/api/rolePolicy.js` memegang **DEFAULT_POLICY** (dipakai untuk modul yang belum punya baris di DB, atau bila DB gagal dibaca) dan cache. Cache di-*invalidate* tiap penyimpanan, jadi **perubahan langsung berlaku tanpa restart**.

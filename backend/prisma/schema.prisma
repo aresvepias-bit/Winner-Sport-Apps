@@ -37,6 +37,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// Dinaikkan saat password diganti, akun dinonaktifkan, atau logout.
+  /// Token yang membawa versi lama langsung ditolak, jadi sesi lama benar-benar mati.
+  tokenVersion Int       @default(0)
+  lastLoginAt  DateTime?
+  /// Untuk batas waktu diam; diperbarui paling sering sekali per menit.
+  lastSeenAt   DateTime?
+
   workOrdersCreated WorkOrder[]
   salesOrders       SalesOrder[]
   purchaseOrders    PurchaseOrder[]
@@ -55,6 +62,20 @@ model RolePermission {
   updatedAt DateTime @updatedAt
 
   @@unique([role, module])
+  @@schema("winner_sport")
+}
+
+/// Pembatas percobaan login. `key` berisi "email:<alamat>" atau "ip:<alamat>".
+/// Disimpan di database (bukan memori) agar penguncian tidak hilang saat server restart
+/// dan tetap berlaku bila nanti backend dijalankan lebih dari satu proses.
+model LoginThrottle {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  attempts    Int       @default(0)
+  lockedUntil DateTime?
+  lastAttempt DateTime  @default(now())
+
+  @@index([lastAttempt])
   @@schema("winner_sport")
 }
 

@@ -79,8 +79,11 @@ async function main() {
     process.exit(1);
   }
 
-  await prisma.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash(pw1, 10) } });
-  console.log('Password berhasil diganti. Token login lama tetap berlaku sampai kedaluwarsa (maks. 7 hari).');
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { password: await bcrypt.hash(pw1, 10), tokenVersion: { increment: 1 } }
+  });
+  console.log('Password berhasil diganti. Semua sesi lama akun ini langsung diakhiri.');
   await prisma.$disconnect();
 }
 

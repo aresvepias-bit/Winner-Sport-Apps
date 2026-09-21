@@ -9,9 +9,9 @@ process.env.JWT_SECRET = TEST_SECRET;
 
 const prisma = installStub({
   user: [
-    { id: 'u-owner', email: 'owner@x.com', name: 'Owner', role: 'OWNER', isActive: true },
-    { id: 'u-sales', email: 'sales@x.com', name: 'Sales', role: 'SALES', isActive: true },
-    { id: 'u-off', email: 'off@x.com', name: 'Nonaktif', role: 'ADMIN', isActive: false }
+    { id: 'u-owner', email: 'owner@x.com', name: 'Owner', role: 'OWNER', isActive: true, tokenVersion: 0, lastSeenAt: null },
+    { id: 'u-sales', email: 'sales@x.com', name: 'Sales', role: 'SALES', isActive: true, tokenVersion: 0, lastSeenAt: null },
+    { id: 'u-off', email: 'off@x.com', name: 'Nonaktif', role: 'ADMIN', isActive: false, tokenVersion: 0, lastSeenAt: null }
   ]
 });
 
@@ -62,7 +62,7 @@ describe('verifyToken', () => {
   });
 
   test('menerima token valid dan mengisi req.user', async () => {
-    const { nextCalled, req } = await run(verifyToken, mockReq({ headers: { authorization: `Bearer ${sign({ id: 'u-owner' })}` } }));
+    const { nextCalled, req } = await run(verifyToken, mockReq({ headers: { authorization: `Bearer ${sign({ id: 'u-owner', tv: 0 })}` } }));
     assert.equal(nextCalled, true);
     assert.equal(req.user.id, 'u-owner');
     assert.equal(req.user.role, 'OWNER');
@@ -70,14 +70,14 @@ describe('verifyToken', () => {
 
   test('role diambil dari database, bukan dari isi token (perubahan role langsung berlaku)', async () => {
     // Token lama menyatakan OWNER, tetapi di database user ini hanyalah SALES.
-    const staleToken = sign({ id: 'u-sales', role: 'OWNER' });
+    const staleToken = sign({ id: 'u-sales', role: 'OWNER', tv: 0 });
     const { req, nextCalled } = await run(verifyToken, mockReq({ headers: { authorization: `Bearer ${staleToken}` } }));
     assert.equal(nextCalled, true);
     assert.equal(req.user.role, 'SALES');
   });
 
   test('user yang dinonaktifkan setelah token terbit langsung ditolak', async () => {
-    const token = sign({ id: 'u-sales' });
+    const token = sign({ id: 'u-sales', tv: 0 });
     const user = prisma.user.rows.find((u) => u.id === 'u-sales');
     user.isActive = false;
     const { res } = await run(verifyToken, mockReq({ headers: { authorization: `Bearer ${token}` } }));

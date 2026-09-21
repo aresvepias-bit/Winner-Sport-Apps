@@ -10,7 +10,12 @@ const path = require('path');
  */
 function matches(row, where = {}) {
   return Object.entries(where).every(([key, val]) => {
-    if (val && typeof val === 'object' && !(val instanceof Date)) return true; // operator (contains, dll) diabaikan
+    if (val && typeof val === 'object' && !(val instanceof Date)) {
+      // Operator yang benar-benar dipakai kode produksi didukung; sisanya dilewati.
+      if (Array.isArray(val.in)) return val.in.includes(row[key]);
+      if (val.lt !== undefined) return new Date(row[key]) < new Date(val.lt);
+      return true;
+    }
     return row[key] === val;
   });
 }
@@ -100,7 +105,7 @@ const MODELS = [
   'user', 'rawMaterial', 'product', 'category', 'unit', 'contact', 'employee', 'bom', 'bomItem',
   'workOrder', 'workOrderMaterial', 'salesOrder', 'salesOrderItem', 'invoice', 'payment',
   'purchaseOrder', 'purchaseOrderItem', 'stockMovement', 'stockOpname', 'stockOpnameItem',
-  'account', 'expense', 'journalEntry', 'journalItem', 'rolePermission', 'salesType'
+  'account', 'expense', 'journalEntry', 'journalItem', 'rolePermission', 'salesType', 'loginThrottle'
 ];
 
 /**

@@ -129,7 +129,9 @@ const userController = {
           ...(email !== undefined ? { email: email.toLowerCase().trim() } : {}),
           ...(role !== undefined ? { role } : {}),
           ...(phone !== undefined ? { phone: phone || null } : {}),
-          ...(isActive !== undefined ? { isActive } : {})
+          ...(isActive !== undefined ? { isActive } : {}),
+          // Menonaktifkan dari form juga harus memutus sesi yang sedang berjalan.
+          ...(isActive === false ? { tokenVersion: { increment: 1 } } : {})
         },
         select: PUBLIC_FIELDS
       });
@@ -155,8 +157,12 @@ const userController = {
       const problem = validatePassword(password, target.email);
       if (problem) return res.status(400).json({ error: problem });
 
-      await prisma.user.update({ where: { id }, data: { password: await bcrypt.hash(password, 10) } });
-      res.json({ message: 'Password akun berhasil diganti.' });
+      // tokenVersion naik: seluruh sesi lama pemilik akun ini langsung ditolak.
+      await prisma.user.update({
+        where: { id },
+        data: { password: await bcrypt.hash(password, 10), tokenVersion: { increment: 1 } }
+      });
+      res.json({ message: 'Password akun berhasil diganti. Sesi lama akun ini otomatis diakhiri.' });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -181,7 +187,8 @@ const userController = {
       }
 
       // Akun tetap dirujuk SPK/SO/PO sebagai pembuat, jadi dinonaktifkan, bukan dihapus.
-      await prisma.user.update({ where: { id }, data: { isActive: false } });
+      // tokenVersion dinaikkan agar sesi yang sedang berjalan langsung terputus.
+      await prisma.user.update({ where: { id }, data: { isActive: false, tokenVersion: { increment: 1 } } });
       res.json({ message: 'Akun dinonaktifkan. Riwayat transaksi yang dibuatnya tetap tersimpan.' });
     } catch (err) {
       res.status(500).json({ error: err.message });

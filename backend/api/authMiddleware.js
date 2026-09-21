@@ -13,10 +13,16 @@ if (!JWT_SECRET || JWT_SECRET === LEAKED_DEFAULT_SECRET) {
   );
 }
 
+/** Sesi berakhir bila tidak ada aktivitas selama ini (default 30 menit). */
+const IDLE_LIMIT_MS = Number(process.env.SESSION_IDLE_MINUTES || 30) * 60 * 1000;
+
+/** lastSeenAt tidak ditulis tiap request; cukup sekali per selang ini. */
+const SEEN_WRITE_INTERVAL_MS = 60 * 1000;
+
 /**
  * Middleware: wajib token JWT valid (Authorization: Bearer <token>).
- * User dicek ulang ke database agar akun nonaktif / perubahan role langsung berlaku,
- * bukan menunggu token kedaluwarsa.
+ * User dicek ulang ke database agar akun nonaktif, perubahan role, ganti password,
+ * maupun logout langsung berlaku — bukan menunggu token kedaluwarsa.
  */
 const verifyToken = async (req, res, next) => {
   const [scheme, token] = (req.headers['authorization'] || '').split(' ');
@@ -34,11 +40,32 @@ const verifyToken = async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, name: true, role: true, isActive: true }
+      select: { id: true, email: true, name: true, role: true, isActive: true, tokenVersion: true, lastSeenAt: true }
     });
     if (!user || !user.isActive) {
       return res.status(401).json({ error: 'Akun tidak ditemukan atau nonaktif.' });
     }
+
+    // Token lama (sebelum ganti password / logout) membawa versi yang tertinggal.
+    // Token terbitan lama tanpa klaim `tv` juga ditolak, agar tidak ada celah.
+    if ((decoded.tv ?? -1) !== user.tokenVersion) {
+      return res.status(401).json({ error: 'Sesi sudah diakhiri. Silakan login kembali.' });
+    }
+
+    const sekarang = Date.now();
+    const terakhir = user.lastSeenAt ? new Date(user.lastSeenAt).getTime() : null;
+
+    if (terakhir !== null && sekarang - terakhir > IDLE_LIMIT_MS) {
+      return res.status(401).json({ error: 'Sesi berakhir karena tidak ada aktivitas. Silakan login kembali.' });
+    }
+
+    // Ditulis seperlunya saja supaya tidak membebani database tiap request.
+    if (terakhir === null || sekarang - terakhir > SEEN_WRITE_INTERVAL_MS) {
+      prisma.user
+        .update({ where: { id: user.id }, data: { lastSeenAt: new Date(sekarang) } })
+        .catch((e) => console.warn('[verifyToken] gagal memperbarui lastSeenAt:', e.message));
+    }
+
     req.user = user;
     next();
   } catch (err) {
@@ -74,5 +101,6 @@ const checkRole = (moduleName) => async (req, res, next) => {
 module.exports = {
   verifyToken,
   checkRole,
-  JWT_SECRET
+  JWT_SECRET,
+  IDLE_LIMIT_MS
 };
