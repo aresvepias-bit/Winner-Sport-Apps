@@ -13,6 +13,8 @@ export const ROUTE_MODULE: Record<string, string> = {
   "/purchasing": "PURCHASING",
   "/accounting": "ACCOUNTING",
   "/master": "MASTER_WRITE",
+  "/customers": "MASTER_WRITE",
+  "/suppliers": "MASTER_WRITE",
   "/users": "USER_ADMIN"
 };
 

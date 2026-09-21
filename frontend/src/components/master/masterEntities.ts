@@ -1,6 +1,7 @@
 import type { MasterTabType } from "@/components/master/MasterNavTabs";
 
-export type MasterEntity = MasterTabType;
+// Kontak tetap memakai CRUD master, tetapi dikelola melalui halaman Customer/Supplier.
+export type MasterEntity = MasterTabType | "contacts";
 /** Entitas yang bisa ditambah/diubah lewat modal (BOM hanya bisa dihapus). */
 export type EditableEntity = Exclude<MasterEntity, "boms">;
 

@@ -8,7 +8,7 @@ import Pagination from "@/components/common/Pagination";
 export interface SalesOrderItem {
   id: string;
   soNumber: string;
-  customer?: { name: string; phone?: string; address?: string };
+  customer?: { name: string; companyName?: string; phone?: string; address?: string };
   orderType: string;
   totalAmount: number;
   paidAmount: number;
@@ -54,7 +54,7 @@ export default function SalesOrdersTable({
           <button
             onClick={onExportCsv}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-[#1a2236] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-all cursor-pointer self-start sm:self-auto"
-            title="Ekspor Seluruh Pesanan"
+            title="Ekspor Pesanan Sesuai Filter"
           >
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Ekspor Penjualan CSV</span>
@@ -63,7 +63,7 @@ export default function SalesOrdersTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[850px] text-left text-xs [&_th]:pr-4 [&_td]:pr-4">
           <thead>
             <tr className="border-b border-slate-200 dark:border-[#1a2236] text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               <th className="pb-3 font-semibold">No. SO</th>
@@ -123,7 +123,7 @@ export default function SalesOrdersTable({
                     {onOpenPrintModal && (
                       <button
                         onClick={() => onOpenPrintModal(o)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] shadow-sm shadow-blue-600/20 cursor-pointer transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-[11px] shadow-sm shadow-blue-600/20 cursor-pointer transition-all"
                         title="Cetak Faktur Invoice & Surat Jalan"
                       >
                         <Printer className="w-3.5 h-3.5" />

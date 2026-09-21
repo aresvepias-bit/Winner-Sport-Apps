@@ -1,0 +1,43 @@
+.popper { z-index: 40; }
+
+.calendar {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  color: #334155;
+  font-family: inherit;
+  box-shadow: 0 16px 40px rgb(15 23 42 / 14%);
+  padding: 4px;
+}
+
+.calendar :global(.react-datepicker__header) {
+  background: transparent;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.calendar :global(.react-datepicker__month-text) {
+  width: 5rem;
+  padding: 10px 2px;
+  margin: 3px;
+  border-radius: 9px;
+  color: inherit;
+  font-size: 12px;
+}
+
+.calendar :global(.react-datepicker__month-text:hover),
+.calendar :global(.react-datepicker__month-text--keyboard-selected) {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.calendar :global(.react-datepicker__month-text--selected),
+.calendar :global(.react-datepicker__month-text--selected:hover) {
+  background: #dc2626;
+  color: white;
+}
+
+:global(.dark) .calendar { background: #0d1424; border-color: #334155; color: #e2e8f0; }
+:global(.dark) .calendar :global(.react-datepicker__header) { border-color: #1e293b; }
+:global(.dark) .calendar :global(.react-datepicker__month-text:hover),
+:global(.dark) .calendar :global(.react-datepicker__month-text--keyboard-selected) { background: #450a0a; color: #fca5a5; }
+:global(.dark) .calendar :global(.react-datepicker__month-text--selected) { background: #dc2626; color: white; }

@@ -25,7 +25,7 @@ export default function StockMovementsTable({ movements, onExportCsv }: StockMov
   const pg = usePagination(movements, 15);
 
   return (
-    <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
+    <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-4 sm:p-6 shadow-sm transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Log Mutasi Inventori &amp; Kartu Stok</h2>
@@ -47,7 +47,7 @@ export default function StockMovementsTable({ movements, onExportCsv }: StockMov
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[640px] text-left text-xs [&_th]:pr-4 [&_td]:pr-4 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
           <thead>
             <tr className="border-b border-slate-200 dark:border-[#1a2236] text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               <th className="pb-3 font-semibold">Waktu</th>

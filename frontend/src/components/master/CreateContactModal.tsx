@@ -6,6 +6,7 @@ import NumberInput from "@/components/common/NumberInput";
 interface CreateContactModalProps {
   /** Tipe awal saat dibuka dari konteks tertentu, mis. CUSTOMER dari form order. */
   defaultType?: string;
+  lockType?: boolean;
   onClose: () => void;
   onSubmit: (data: {
     name: string;
@@ -17,7 +18,7 @@ interface CreateContactModalProps {
   }) => Promise<void>;
 }
 
-export default function CreateContactModal({ defaultType = "SUPPLIER", onClose, onSubmit }: CreateContactModalProps) {
+export default function CreateContactModal({ defaultType = "SUPPLIER", lockType = false, onClose, onSubmit }: CreateContactModalProps) {
   const [form, setForm] = useState({
     name: "",
     type: defaultType,
@@ -42,7 +43,7 @@ export default function CreateContactModal({ defaultType = "SUPPLIER", onClose, 
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1a2236] pb-3">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">Tambah Rekanan Bisnis Baru</h3>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">Tambah {lockType ? (defaultType === "CUSTOMER" ? "Customer" : "Supplier") : "Rekanan Bisnis Baru"}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-lg font-bold cursor-pointer">
             &times;
           </button>
@@ -52,6 +53,7 @@ export default function CreateContactModal({ defaultType = "SUPPLIER", onClose, 
           <div>
             <label className="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Tipe Rekanan</label>
             <select
+              disabled={lockType}
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-red-500"

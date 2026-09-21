@@ -1,6 +1,7 @@
 "use client";
 
 import { formatRupiah, formatNumber } from "@/lib/utils";
+import StockRowActions from "./StockRowActions";
 import ExportButton from "@/components/common/ExportButton";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/common/Pagination";
@@ -17,14 +18,16 @@ interface MaterialItem {
 
 interface MaterialsInventoryTableProps {
   materials: MaterialItem[];
+  onMovement?: (id: string, direction: "IN" | "OUT") => void;
+  onViewLedger?: (id: string, name: string) => void;
   onExportCsv?: () => void;
 }
 
-export default function MaterialsInventoryTable({ materials, onExportCsv }: MaterialsInventoryTableProps) {
+export default function MaterialsInventoryTable({ materials, onExportCsv, onMovement, onViewLedger }: MaterialsInventoryTableProps) {
   const pg = usePagination(materials, 10);
 
   return (
-    <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
+    <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-4 sm:p-6 shadow-sm transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Persediaan Bahan Baku Aktif</h2>
@@ -36,7 +39,7 @@ export default function MaterialsInventoryTable({ materials, onExportCsv }: Mate
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[640px] text-left text-xs [&_th]:pr-4 [&_td]:pr-4 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
           <thead>
             <tr className="border-b border-slate-200 dark:border-[#1a2236] text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               <th className="pb-3 font-semibold">SKU</th>
@@ -45,6 +48,7 @@ export default function MaterialsInventoryTable({ materials, onExportCsv }: Mate
               <th className="pb-3 font-semibold">Nilai Per Satuan</th>
               <th className="pb-3 font-semibold">Total Nilai Stok</th>
               <th className="pb-3 font-semibold">Status</th>
+              <th className="w-32 pb-3 text-right font-semibold">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
@@ -74,12 +78,13 @@ export default function MaterialsInventoryTable({ materials, onExportCsv }: Mate
                         </span>
                       )}
                     </td>
+                    <td className="py-3"><StockRowActions itemId={m.id} itemName={m.name} onMovement={onMovement} onViewLedger={onViewLedger} /></td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-slate-400">
+                <td colSpan={7} className="py-6 text-center text-slate-400">
                   Tidak ada data stok bahan baku.
                 </td>
               </tr>

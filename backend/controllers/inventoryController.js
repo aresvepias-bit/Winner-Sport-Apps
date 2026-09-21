@@ -1,4 +1,19 @@
 const prisma = require('../api/db');
+const { randomUUID } = require('node:crypto');
+const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
+const itemModel = (db, type) => {
+  if (!['RAW_MATERIAL', 'PRODUCT'].includes(type)) fail('Tipe barang tidak valid.');
+  return type === 'RAW_MATERIAL' ? db.rawMaterial : db.product;
+};
+const quantityValue = (value, type) => {
+  if (value === null || value === undefined || value === '' || !['number', 'string'].includes(typeof value)) fail('Kuantitas wajib diisi.');
+  const n = Number(value);
+  if (!Number.isFinite(n) || Math.abs(n) > (type === 'PRODUCT' ? 2147483647 : 9999999999.99) || Math.abs(n * 100 - Math.round(n * 100)) > 0.0001) fail('Kuantitas tidak valid; maksimal 2 angka desimal.');
+  if (type === 'PRODUCT' && !Number.isInteger(n)) fail('Stok produk harus berupa pcs bulat.');
+  return n;
+};
+const sendError = (res, err) => res.status(err.code === 'P2034' ? 409 : err.status || 500).json({ error: err.code === 'P2034' ? 'Stok sedang berubah. Segarkan data dan coba kembali.' : err.message });
+const transact = (fn) => prisma.$transaction(fn, { isolationLevel: 'Serializable' });
 
 /**
  * Controller: Inventori Bahan Baku, Pakaian Jadi, Mutasi, dan Stock Opname
@@ -41,15 +56,19 @@ const inventoryController = {
         lowStockProducts
       });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   },
 
   // GET /api/inventory/movements
   async getMovements(req, res) {
     try {
-      const { itemType, limit = 100 } = req.query;
-      const where = itemType ? { itemType } : {};
+      const { itemType, itemId, limit = 100 } = req.query;
+      if (itemType) itemModel(prisma, itemType);
+      const take = Number(limit);
+      if (!Number.isInteger(take) || take < 1 || take > 1000) return res.status(400).json({ error: 'Limit harus antara 1 dan 1000.' });
+      if (itemId && !itemType) return res.status(400).json({ error: 'Tipe barang diperlukan.' });
+      const where = { ...(itemType ? { itemType } : {}), ...(itemId ? { [itemType === 'RAW_MATERIAL' ? 'rawMaterialId' : 'productId']: itemId } : {}) };
 
       const movements = await prisma.stockMovement.findMany({
         where,
@@ -58,65 +77,42 @@ const inventoryController = {
           product: { include: { unit: true } }
         },
         orderBy: { createdAt: 'desc' },
-        take: Number(limit)
+        take
       });
 
       res.json(movements);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   },
 
-  // POST /api/inventory/movements/manual
+  // Penyesuaian non-PO/SO/WO: saldo dan audit mutasi harus tersimpan bersama.
   async createManualMovement(req, res) {
     try {
-      const { itemType, rawMaterialId, productId, type, quantity, notes } = req.body;
-      const qty = Number(quantity);
-
-      if (!qty || qty === 0) {
-        return res.status(400).json({ error: 'Kuantitas tidak boleh 0.' });
-      }
-
-      let balanceAfter = 0;
-
-      if (itemType === 'RAW_MATERIAL') {
-        const mat = await prisma.rawMaterial.findUnique({ where: { id: rawMaterialId } });
-        if (!mat) return res.status(404).json({ error: 'Bahan baku tidak ditemukan.' });
-
-        balanceAfter = Number(mat.currentStock) + qty;
-        await prisma.rawMaterial.update({
-          where: { id: rawMaterialId },
-          data: { currentStock: balanceAfter }
-        });
-      } else {
-        const prod = await prisma.product.findUnique({ where: { id: productId } });
-        if (!prod) return res.status(404).json({ error: 'Produk tidak ditemukan.' });
-
-        balanceAfter = Number(prod.currentStock) + qty;
-        await prisma.product.update({
-          where: { id: productId },
-          data: { currentStock: Math.round(balanceAfter) }
-        });
-      }
-
-      const movement = await prisma.stockMovement.create({
-        data: {
-          itemType,
-          rawMaterialId: itemType === 'RAW_MATERIAL' ? rawMaterialId : null,
-          productId: itemType === 'PRODUCT' ? productId : null,
-          type: type || 'STOCK_ADJUSTMENT',
-          quantity: qty,
-          balanceAfter,
-          referenceType: 'MANUAL',
-          referenceId: `ADJ-${Date.now().toString().slice(-6)}`,
-          notes
-        }
+      const { itemType, rawMaterialId, productId, notes, type = 'STOCK_ADJUSTMENT' } = req.body;
+      itemModel(prisma, itemType);
+      const id = itemType === 'RAW_MATERIAL' ? rawMaterialId : productId;
+      if (!id || (itemType === 'RAW_MATERIAL' ? productId : rawMaterialId)) fail('Pilih satu barang sesuai tipe.');
+      const qty = quantityValue(req.body.quantity, itemType);
+      if (!qty) fail('Kuantitas tidak boleh 0.');
+      if (type !== 'STOCK_ADJUSTMENT') fail('Gunakan dokumen pembelian, produksi, atau penjualan untuk transaksi terkait.');
+      if (typeof notes !== 'string' || !notes.trim()) fail('Alasan penyesuaian wajib diisi.');
+      const movement = await transact(async (tx) => {
+        const model = itemModel(tx, itemType);
+        const item = await model.findUnique({ where: { id } });
+        if (!item) fail('Barang tidak ditemukan.', 404);
+        const balanceAfter = quantityValue(Number((Number(item.currentStock) + qty).toFixed(2)), itemType);
+        if (balanceAfter < 0) fail('Stok tidak cukup. Pengeluaran tidak boleh membuat saldo negatif.');
+        await model.update({ where: { id }, data: { currentStock: balanceAfter } });
+        return tx.stockMovement.create({ data: {
+          itemType, rawMaterialId: itemType === 'RAW_MATERIAL' ? id : null,
+          productId: itemType === 'PRODUCT' ? id : null,
+          type, quantity: qty, balanceAfter, referenceType: 'MANUAL',
+          referenceId: `ADJ-${randomUUID()}`, notes: notes.trim()
+        } });
       });
-
       res.status(201).json(movement);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { sendError(res, err); }
   },
 
   // GET /api/inventory/opname
@@ -135,104 +131,69 @@ const inventoryController = {
       });
       res.json(opnames);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   },
 
-  // POST /api/inventory/opname
   async createOpname(req, res) {
     try {
       const { itemType, notes, items } = req.body;
-      const opnameNumber = `OP-${Date.now().toString().slice(-6)}`;
-
-      const opname = await prisma.stockOpname.create({
-        data: {
-          opnameNumber,
-          itemType: itemType || 'RAW_MATERIAL',
-          status: 'DRAFT',
-          notes,
-          items: {
-            create: (items || []).map(i => ({
-              rawMaterialId: i.rawMaterialId || null,
-              productId: i.productId || null,
-              systemQty: Number(i.systemQty) || 0,
-              physicalQty: Number(i.physicalQty) || 0,
-              difference: (Number(i.physicalQty) || 0) - (Number(i.systemQty) || 0),
-              notes: i.notes
-            }))
-          }
-        },
-        include: { items: true }
+      itemModel(prisma, itemType);
+      if (!Array.isArray(items) || !items.length || items.length > 500) fail('Isi 1 hingga 500 barang untuk opname.');
+      const opname = await transact(async (tx) => {
+        const seen = new Set();
+        const lines = [];
+        for (const line of items) {
+          if (!line || typeof line !== 'object') fail('Baris opname tidak valid.');
+          const id = itemType === 'RAW_MATERIAL' ? line.rawMaterialId : line.productId;
+          if (!id || seen.has(id) || (itemType === 'RAW_MATERIAL' ? line.productId : line.rawMaterialId)) fail('Barang opname tidak valid atau duplikat.');
+          seen.add(id);
+          const physicalQty = quantityValue(line.physicalQty, itemType);
+          if (physicalQty < 0) fail('Stok fisik tidak boleh negatif.');
+          const item = await itemModel(tx, itemType).findUnique({ where: { id } });
+          if (!item) fail('Barang tidak ditemukan.', 404);
+          const systemQty = Number(item.currentStock);
+          // Tolak hitungan dari layar yang sudah kedaluwarsa; jangan percaya saldo kiriman klien.
+          if (line.systemQty !== undefined && quantityValue(line.systemQty, itemType) !== systemQty) fail('Stok berubah sejak halaman dibuka. Segarkan dan hitung ulang.', 409);
+          lines.push({ rawMaterialId: itemType === 'RAW_MATERIAL' ? id : null, productId: itemType === 'PRODUCT' ? id : null,
+            systemQty, physicalQty, difference: Number((physicalQty - systemQty).toFixed(2)), notes: line.notes });
+        }
+        return tx.stockOpname.create({ data: { opnameNumber: `OP-${randomUUID()}`, itemType, status: 'DRAFT', notes, items: { create: lines } }, include: { items: true } });
       });
-
       res.status(201).json(opname);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { sendError(res, err); }
   },
 
-  // POST /api/inventory/opname/:id/apply
   async applyOpname(req, res) {
     try {
-      const { id } = req.params;
-      const opname = await prisma.stockOpname.findUnique({
-        where: { id },
-        include: { items: true }
-      });
-
-      if (!opname || opname.status === 'APPLIED') {
-        return res.status(400).json({ error: 'Opname tidak ditemukan atau sudah diterapkan.' });
-      }
-
-      for (const item of opname.items) {
-        if (item.difference !== 0) {
-          if (opname.itemType === 'RAW_MATERIAL' && item.rawMaterialId) {
-            await prisma.rawMaterial.update({
-              where: { id: item.rawMaterialId },
-              data: { currentStock: item.physicalQty }
-            });
-            await prisma.stockMovement.create({
-              data: {
-                itemType: 'RAW_MATERIAL',
-                rawMaterialId: item.rawMaterialId,
-                type: 'STOCK_ADJUSTMENT',
-                quantity: item.difference,
-                balanceAfter: item.physicalQty,
-                referenceType: 'OPNAME',
-                referenceId: opname.opnameNumber,
-                notes: `Penyesuaian Opname Fisik: ${item.notes || '-'}`
-              }
-            });
-          } else if (opname.itemType === 'PRODUCT' && item.productId) {
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: { currentStock: Math.round(Number(item.physicalQty)) }
-            });
-            await prisma.stockMovement.create({
-              data: {
-                itemType: 'PRODUCT',
-                productId: item.productId,
-                type: 'STOCK_ADJUSTMENT',
-                quantity: item.difference,
-                balanceAfter: item.physicalQty,
-                referenceType: 'OPNAME',
-                referenceId: opname.opnameNumber,
-                notes: `Penyesuaian Opname Fisik: ${item.notes || '-'}`
-              }
-            });
-          }
+      const updated = await transact(async (tx) => {
+        const opname = await tx.stockOpname.findUnique({ where: { id: req.params.id }, include: { items: true } });
+        if (!opname || opname.status !== 'DRAFT') fail('Opname tidak ditemukan atau sudah diterapkan.');
+        if (!opname.items.length) fail('Opname kosong tidak dapat diterapkan.');
+        const model = itemModel(tx, opname.itemType);
+        // Validasi seluruh baris sebelum melakukan perubahan.
+        for (const line of opname.items) {
+          const item = await model.findUnique({ where: { id: opname.itemType === 'RAW_MATERIAL' ? line.rawMaterialId : line.productId } });
+          if (!item || Number(item.currentStock) !== Number(line.systemQty)) fail('Stok berubah setelah draft dibuat. Buat opname baru berdasarkan stok terkini.', 409);
+          if (quantityValue(Number(line.physicalQty), opname.itemType) < 0) fail('Stok fisik tidak boleh negatif.');
         }
-      }
-
-      const updated = await prisma.stockOpname.update({
-        where: { id },
-        data: { status: 'APPLIED' }
+        for (const line of opname.items) {
+          const balanceAfter = Number(line.physicalQty);
+          const difference = Number((balanceAfter - Number(line.systemQty)).toFixed(2));
+          if (!difference) continue;
+          const id = opname.itemType === 'RAW_MATERIAL' ? line.rawMaterialId : line.productId;
+          await model.update({ where: { id }, data: { currentStock: balanceAfter } });
+          await tx.stockMovement.create({ data: {
+            itemType: opname.itemType, rawMaterialId: line.rawMaterialId, productId: line.productId,
+            type: 'STOCK_ADJUSTMENT', quantity: difference, balanceAfter,
+            referenceType: 'OPNAME', referenceId: opname.opnameNumber,
+            notes: `Penyesuaian Opname Fisik: ${line.notes || opname.notes || '-'}`
+          } });
+        }
+        return tx.stockOpname.update({ where: { id: opname.id }, data: { status: 'APPLIED' } });
       });
-
       res.json({ message: 'Hasil opname berhasil diterapkan ke stok.', opname: updated });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
+    } catch (err) { sendError(res, err); }
   }
 };
 

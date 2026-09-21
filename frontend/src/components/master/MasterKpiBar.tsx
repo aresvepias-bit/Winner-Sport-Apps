@@ -2,10 +2,10 @@
 
 import { Package, Shirt, Users, Layers, AlertTriangle } from "lucide-react";
 import { formatRupiah, formatNumber } from "@/lib/utils";
-import { MasterTabType } from "./MasterNavTabs";
+import type { MasterEntity } from "./masterEntities";
 
 interface MasterKpiBarProps {
-  activeTab: MasterTabType;
+  activeTab: MasterEntity;
   materials: any[];
   products: any[];
   boms: any[];

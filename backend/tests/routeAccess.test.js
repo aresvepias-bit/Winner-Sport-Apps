@@ -51,6 +51,11 @@ describe('routeAccess.ts (frontend) sejalan dengan rolePolicy.js (backend)', { s
   });
 
   test('canAccess mengikuti daftar modul pengguna', () => {
+    for (const route of ['/customers', '/suppliers']) {
+      assert.equal(frontend.canAccess(['MASTER_WRITE'], route), true);
+      assert.equal(frontend.canAccess(['SALES'], route), false);
+      assert.equal(frontend.canAccess([], route), false);
+    }
     assert.equal(frontend.canAccess(['DASHBOARD'], '/'), true);
     assert.equal(frontend.canAccess(['DASHBOARD'], '/inventory'), false);
     assert.equal(frontend.canAccess(['INVENTORY'], '/inventory/opname'), true, 'sub-path ikut halaman induk');

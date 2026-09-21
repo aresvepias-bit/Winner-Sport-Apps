@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import NumberInput from "@/components/common/NumberInput";
 
 interface StockOpnameModalProps {
@@ -27,8 +27,9 @@ export default function StockOpnameModal({
   const [selectedId, setSelectedId] = useState(
     itemType === "MATERIAL" ? materials[0]?.id || "" : products[0]?.id || ""
   );
-  const [physicalQty, setPhysicalQty] = useState(0);
+  const [physicalQty, setPhysicalQty] = useState<number | "">("");
   const [notes, setNotes] = useState("");
+  const pending = useRef(false);
   const [submitting, setSubmitting] = useState(false);
 
   const currentItem =
@@ -37,10 +38,13 @@ export default function StockOpnameModal({
       : products.find((p) => p.id === selectedId) || products[0];
 
   const systemQty = currentItem ? Number(currentItem.currentStock) : 0;
-  const discrepancy = physicalQty - systemQty;
+  const discrepancy = Number(physicalQty) - systemQty;
+  const unitSymbol = itemType === "MATERIAL" ? materials.find((m) => m.id === selectedId)?.unit?.symbol || "satuan dasar" : "pcs";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pending.current || !selectedId || physicalQty === "") return;
+    pending.current = true;
     setSubmitting(true);
     try {
       await onSubmit({
@@ -52,6 +56,7 @@ export default function StockOpnameModal({
         notes
       });
     } finally {
+      pending.current = false;
       setSubmitting(false);
     }
   };
@@ -69,6 +74,7 @@ export default function StockOpnameModal({
             </p>
           </div>
           <button
+            disabled={submitting}
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-lg font-bold cursor-pointer"
           >
@@ -84,11 +90,11 @@ export default function StockOpnameModal({
                 type="button"
                 onClick={() => {
                   setItemType("MATERIAL");
-                  if (materials[0]) setSelectedId(materials[0].id);
+                  setSelectedId(materials[0]?.id || ""); setPhysicalQty("");
                 }}
                 className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${
                   itemType === "MATERIAL"
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    ? "bg-red-600 text-white border-red-600 shadow-sm"
                     : "bg-slate-50 dark:bg-[#141b2d] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-[#1a2236]"
                 }`}
               >
@@ -98,11 +104,11 @@ export default function StockOpnameModal({
                 type="button"
                 onClick={() => {
                   setItemType("PRODUCT");
-                  if (products[0]) setSelectedId(products[0].id);
+                  setSelectedId(products[0]?.id || ""); setPhysicalQty("");
                 }}
                 className={`py-2 rounded-xl font-bold border transition-colors cursor-pointer ${
                   itemType === "PRODUCT"
-                    ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                    ? "bg-red-600 text-white border-red-600 shadow-sm"
                     : "bg-slate-50 dark:bg-[#141b2d] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-[#1a2236]"
                 }`}
               >
@@ -115,7 +121,7 @@ export default function StockOpnameModal({
             <label className="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Pilih Barang</label>
             <select
               value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
+              onChange={(e) => { setSelectedId(e.target.value); setPhysicalQty(""); }}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-red-500"
               required
             >
@@ -137,7 +143,7 @@ export default function StockOpnameModal({
             <div className="p-3 bg-slate-50 dark:bg-[#141b2d] rounded-xl border border-slate-200 dark:border-[#1a2236]">
               <span className="text-slate-500 block text-[11px]">Saldo Buku Sistem:</span>
               <span className="text-base font-bold text-slate-900 dark:text-white">
-                {systemQty} {itemType === "MATERIAL" ? "kg" : "pcs"}
+                {systemQty} {unitSymbol}
               </span>
             </div>
 
@@ -168,7 +174,7 @@ export default function StockOpnameModal({
             <span className="font-bold">Selisih Stok (Discrepancy):</span>
             <span className="font-black text-sm">
               {discrepancy > 0 ? `+${discrepancy}` : discrepancy}{" "}
-              {itemType === "MATERIAL" ? "kg" : "pcs"}
+              {unitSymbol}
             </span>
           </div>
 
@@ -188,17 +194,18 @@ export default function StockOpnameModal({
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              disabled={submitting}
+            onClick={onClose}
               className="px-4 py-2 bg-slate-100 dark:bg-[#1a2236] hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold rounded-xl cursor-pointer transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
-              disabled={submitting}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl cursor-pointer shadow-md shadow-blue-600/25 transition-all disabled:opacity-50"
+              disabled={submitting || !selectedId || physicalQty === ""}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl cursor-pointer shadow-md shadow-blue-600/25 transition-all disabled:opacity-50"
             >
-              {submitting ? "Menyesuaikan..." : "Simpan & Sesuaikan Stok"}
+              {submitting ? "Menyimpan..." : "Simpan Draft Opname"}
             </button>
           </div>
         </form>

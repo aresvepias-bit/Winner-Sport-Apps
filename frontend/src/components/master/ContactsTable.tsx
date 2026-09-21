@@ -16,15 +16,17 @@ interface Contact {
 
 interface ContactsTableProps {
   contacts: Contact[];
+  contactType?: "CUSTOMER" | "SUPPLIER";
   onEdit?: (contact: Contact) => void;
   onDelete?: (id: string, name: string) => void;
 }
 
-export default function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps) {
+export default function ContactsTable({ contacts, onEdit, onDelete, contactType }: ContactsTableProps) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"ALL" | "CUSTOMER" | "SUPPLIER">("ALL");
 
   const filteredContacts = contacts.filter((c) => {
+    if (contactType && c.type !== contactType) return false;
     const q = search.toLowerCase();
     const matchQuery = (
       c.name?.toLowerCase().includes(q) ||
@@ -43,13 +45,13 @@ export default function ContactsTable({ contacts, onEdit, onDelete }: ContactsTa
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Supplier &amp; Customer</h2>
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar {contactType === "CUSTOMER" ? "Customer" : contactType === "SUPPLIER" ? "Supplier" : "Supplier & Customer"}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">Master rekanan bisnis, pemasok bahan dan pelanggan ({filteredContacts.length} rekanan)</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Filter Tipe */}
-          <div className="flex items-center gap-1 bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] p-1 rounded-xl text-[11px] font-semibold">
+          {!contactType && <div className="flex items-center gap-1 bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] p-1 rounded-xl text-[11px] font-semibold">
             <button
               onClick={() => setTypeFilter("ALL")}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
@@ -80,7 +82,7 @@ export default function ContactsTable({ contacts, onEdit, onDelete }: ContactsTa
             >
               Pemasok
             </button>
-          </div>
+          </div>}
 
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

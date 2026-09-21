@@ -81,3 +81,6 @@ assets/raw/
 *.p12
 secrets/
 credentials/
+
+# Perkakas lokal Claude Code, bukan bagian aplikasi
+skills/

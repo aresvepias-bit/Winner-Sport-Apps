@@ -15,11 +15,12 @@ interface EditContactModalProps {
     creditLimit?: number;
     notes?: string;
   };
+  lockType?: boolean;
   onClose: () => void;
   onSubmit: (id: string, data: any) => Promise<void>;
 }
 
-export default function EditContactModal({ contact, onClose, onSubmit }: EditContactModalProps) {
+export default function EditContactModal({ contact, onClose, onSubmit, lockType = false }: EditContactModalProps) {
   const [form, setForm] = useState({
     name: contact.name || "",
     type: contact.type || "CUSTOMER",
@@ -54,6 +55,7 @@ export default function EditContactModal({ contact, onClose, onSubmit }: EditCon
           <div>
             <label className="block text-slate-600 dark:text-slate-400 mb-1 font-medium">Tipe Rekanan</label>
             <select
+              disabled={lockType}
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-red-500"

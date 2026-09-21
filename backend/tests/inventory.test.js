@@ -112,3 +112,84 @@ describe('inventoryController opname (alur dua langkah dari halaman Inventori)',
     assert.equal(prisma.stockMovement.rows.length, jumlahMutasiAwal);
   });
 });
+
+// Validasi dan kegagalan transaksi pada aksi gudang.
+describe('inventory ERP guardrails', () => {
+  test('manual masuk/keluar menjaga saldo dan kartu stok', async () => {
+    const before = Number(prisma.rawMaterial.rows.find(x => x.id === 'rm-aman').currentStock);
+    const incoming = await call(inventoryController.createManualMovement, { body: { itemType: 'RAW_MATERIAL', rawMaterialId: 'rm-aman', quantity: 2.25, notes: 'koreksi' } });
+    assert.equal(incoming.code, 201);
+    assert.equal(incoming.body.balanceAfter, before + 2.25);
+    const outgoing = await call(inventoryController.createManualMovement, { body: { itemType: 'RAW_MATERIAL', rawMaterialId: 'rm-aman', quantity: -2.25, notes: 'koreksi keluar' } });
+    assert.equal(outgoing.body.balanceAfter, before);
+    assert.equal(outgoing.body.quantity, -2.25);
+  });
+
+  test('menolak stok negatif, pecahan produk, dan input invalid tanpa perubahan', async () => {
+    const before = JSON.stringify(prisma.product.rows);
+    const count = prisma.stockMovement.rows.length;
+    for (const quantity of [-99999, 1.5, 0, 'Infinity', null, 0.001]) {
+      const res = await call(inventoryController.createManualMovement, { body: { itemType: 'PRODUCT', productId: 'p-tipis', quantity, notes: 'uji' } });
+      assert.equal(res.code, 400);
+    }
+    const noReason = await call(inventoryController.createManualMovement, { body: { itemType: 'PRODUCT', productId: 'p-tipis', quantity: 1 } });
+    assert.equal(noReason.code, 400);
+    assert.equal(JSON.stringify(prisma.product.rows), before);
+    assert.equal(prisma.stockMovement.rows.length, count);
+  });
+
+  test('draft mengambil saldo server dan menolak saldo klien usang', async () => {
+    const res = await call(inventoryController.createOpname, { body: { itemType: 'PRODUCT', items: [{ productId: 'p-tipis', physicalQty: 7 }] } });
+    assert.equal(res.code, 201);
+    assert.equal(res.body.items[0].systemQty, 5);
+    const stale = await call(inventoryController.createOpname, { body: { itemType: 'PRODUCT', items: [{ productId: 'p-tipis', systemQty: 999, physicalQty: 7 }] } });
+    assert.equal(stale.code, 409);
+  });
+
+  test('stok berubah setelah draft tidak ditimpa oleh opname', async () => {
+    const draft = await call(inventoryController.createOpname, { body: { itemType: 'PRODUCT', items: [{ productId: 'p-tipis', physicalQty: 7 }] } });
+    await call(inventoryController.createManualMovement, { body: { itemType: 'PRODUCT', productId: 'p-tipis', quantity: 1, notes: 'barang ditemukan' } });
+    const res = await call(inventoryController.applyOpname, { params: { id: draft.body.id } });
+    assert.equal(res.code, 409);
+    assert.equal(prisma.product.rows.find(x => x.id === 'p-tipis').currentStock, 6);
+    assert.equal(draft.body.status, 'DRAFT');
+  });
+
+  test('menolak opname kosong, duplikat, negatif, dan tipe salah', async () => {
+    for (const body of [
+      { itemType: 'PRODUCT', items: [] },
+      { itemType: 'INVALID', items: [{ productId: 'p-tipis', physicalQty: 1 }] },
+      { itemType: 'PRODUCT', items: [{ productId: 'p-tipis', physicalQty: -1 }] },
+      { itemType: 'PRODUCT', items: [{ productId: 'p-tipis', physicalQty: 1 }, { productId: 'p-tipis', physicalQty: 2 }] }
+    ]) assert.equal((await call(inventoryController.createOpname, { body })).code, 400);
+  });
+
+  test('kartu stok difilter menurut barang dan limit divalidasi', async () => {
+    const res = await call(inventoryController.getMovements, { query: { itemType: 'RAW_MATERIAL', itemId: 'rm-aman', limit: 100 } });
+    assert.equal(res.code, 200);
+    assert.ok(res.body.every(x => x.rawMaterialId === 'rm-aman'));
+    assert.equal((await call(inventoryController.getMovements, { query: { limit: -1 } })).code, 400);
+  });
+
+  test('saldo dan mutasi berada dalam transaksi yang sama saat pencatatan gagal', async () => {
+    const originalTransaction = prisma.$transaction;
+    const originalCreate = prisma.stockMovement.create;
+    const before = Number(prisma.product.rows.find(x => x.id === 'p-tipis').currentStock);
+    let transactionCount = 0;
+    // Emulasi rollback; pengujian ini tidak menggantikan uji konkurensi PostgreSQL.
+    prisma.$transaction = async (fn, options) => {
+      transactionCount++;
+      assert.equal(options.isolationLevel, 'Serializable');
+      const snapshots = Object.values(prisma).filter(x => x && x.rows).map(model => [model, structuredClone(model.rows)]);
+      try { return await fn(prisma); }
+      catch (err) { for (const [model, rows] of snapshots) model.rows.splice(0, model.rows.length, ...rows); throw err; }
+    };
+    prisma.stockMovement.create = async () => { throw new Error('simulated write failure'); };
+    try {
+      const res = await call(inventoryController.createManualMovement, { body: { itemType: 'PRODUCT', productId: 'p-tipis', quantity: 2, notes: 'uji rollback' } });
+      assert.equal(res.code, 500);
+      assert.equal(transactionCount, 1);
+      assert.equal(prisma.product.rows.find(x => x.id === 'p-tipis').currentStock, before);
+    } finally { prisma.$transaction = originalTransaction; prisma.stockMovement.create = originalCreate; }
+  });
+});

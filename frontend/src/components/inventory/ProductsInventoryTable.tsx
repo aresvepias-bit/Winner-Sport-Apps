@@ -1,6 +1,7 @@
 "use client";
 
 import { formatRupiah, formatNumber } from "@/lib/utils";
+import StockRowActions from "./StockRowActions";
 import ExportButton from "@/components/common/ExportButton";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/common/Pagination";
@@ -15,14 +16,16 @@ interface ProductItem {
 
 interface ProductsInventoryTableProps {
   products: ProductItem[];
+  onMovement?: (id: string, direction: "IN" | "OUT") => void;
+  onViewLedger?: (id: string, name: string) => void;
   onExportCsv?: () => void;
 }
 
-export default function ProductsInventoryTable({ products, onExportCsv }: ProductsInventoryTableProps) {
+export default function ProductsInventoryTable({ products, onExportCsv, onMovement, onViewLedger }: ProductsInventoryTableProps) {
   const pg = usePagination(products, 10);
 
   return (
-    <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
+    <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-4 sm:p-6 shadow-sm transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Persediaan Pakaian Jadi Siap Jual</h2>
@@ -34,7 +37,7 @@ export default function ProductsInventoryTable({ products, onExportCsv }: Produc
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[640px] text-left text-xs [&_th]:pr-4 [&_td]:pr-4 [&_th:last-child]:pr-0 [&_td:last-child]:pr-0">
           <thead>
             <tr className="border-b border-slate-200 dark:border-[#1a2236] text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               <th className="pb-3 font-semibold">SKU</th>
@@ -42,6 +45,7 @@ export default function ProductsInventoryTable({ products, onExportCsv }: Produc
               <th className="pb-3 font-semibold">Stok (Pcs)</th>
               <th className="pb-3 font-semibold">Konversi Kodian (1 Kodi = 20 Pcs)</th>
               <th className="pb-3 font-semibold">Nilai HPP Persediaan</th>
+              <th className="w-32 pb-3 text-right font-semibold">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
@@ -63,12 +67,13 @@ export default function ProductsInventoryTable({ products, onExportCsv }: Produc
                     <td className="py-3 font-semibold text-emerald-600 dark:text-emerald-400">
                       {formatRupiah(totalHpp)}
                     </td>
+                    <td className="py-3"><StockRowActions itemId={p.id} itemName={p.name} onMovement={onMovement} onViewLedger={onViewLedger} /></td>
                   </tr>
                 );
               })
             ) : (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-slate-400">
+                <td colSpan={6} className="py-6 text-center text-slate-400">
                   Tidak ada data stok produk jadi.
                 </td>
               </tr>
