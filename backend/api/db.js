@@ -5,28 +5,41 @@ const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 const { parse } = require('pg-connection-string');
 
-let prisma;
+/**
+ * Klien Prisma tunggal.
+ *
+ * Disimpan di globalThis agar tidak dibuat ulang saat modul dimuat ulang
+ * (nodemon saat pengembangan, dan pemakaian ulang instance di serverless).
+ * Tanpa ini, tiap muat ulang membuka pool baru dan koneksi Supabase cepat habis.
+ */
 
-try {
-  if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('[YOUR-PASSWORD]')) {
-    const dbConfig = parse(process.env.DATABASE_URL);
+// Di serverless tiap instance melayani satu permintaan pada satu waktu, jadi pool
+// besar hanya memboroskan kuota koneksi Supabase yang dipakai bersama semua instance.
+const POOL_MAX = Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 1 : 10));
+
+function createPrisma() {
+  try {
+    const url = process.env.DATABASE_URL;
+    if (!url || url.includes('[YOUR-PASSWORD]')) return new PrismaClient();
+
+    const dbConfig = parse(url);
     dbConfig.ssl = { rejectUnauthorized: false };
-    const pool = new Pool(dbConfig);
+    dbConfig.max = POOL_MAX;
 
-    // Set search_path ke winner_sport, public setiap koneksi baru dibuat
-    pool.on('connect', (client) => {
-      client.query('SET search_path TO winner_sport, public')
-        .catch(err => console.error('[db] Error setting search_path:', err.message));
-    });
+    // search_path dipasang lewat parameter koneksi, bukan query terpisah setelah
+    // koneksi jadi. Cara lama memanggil client.query() tanpa menunggu hasilnya,
+    // yang memicu peringatan deprecation pg dan bisa balapan dengan query pertama.
+    dbConfig.options = '-c search_path=winner_sport,public';
 
-    const adapter = new PrismaPg(pool);
-    prisma = new PrismaClient({ adapter });
-  } else {
-    prisma = new PrismaClient();
+    return new PrismaClient({ adapter: new PrismaPg(new Pool(dbConfig)) });
+  } catch (err) {
+    console.warn('[db] Kembali ke PrismaClient standar:', err.message);
+    return new PrismaClient();
   }
-} catch (err) {
-  console.warn('[db] Falling back to standard PrismaClient:', err.message);
-  prisma = new PrismaClient();
 }
+
+const globalKey = Symbol.for('winnerSport.prisma');
+const prisma = globalThis[globalKey] || createPrisma();
+if (!globalThis[globalKey]) globalThis[globalKey] = prisma;
 
 module.exports = prisma;

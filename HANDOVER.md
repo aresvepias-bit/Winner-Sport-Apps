@@ -304,6 +304,38 @@ Lalu isi master tipe: `cd backend && node scripts/seed-sales-types.js` (aman diu
 
 ---
 
+## ☁️ Deploy ke Vercel
+
+Monorepo ini jadi **dua proyek Vercel terpisah** dari repositori yang sama.
+
+### 1. Proyek Backend
+- **Root Directory:** `backend`
+- Konfigurasinya di `backend/vercel.json`: hanya `api/index.js` yang dijadikan fungsi, dan semua jalur diarahkan ke situ. Setelah deploy pertama, **cek daftar Functions di dasbor** — kalau muncul fungsi lain seperti `api/db`, berarti deteksi otomatis masih jalan dan `vercel.json` perlu disesuaikan.
+- `postinstall` menjalankan `prisma generate`.
+- Environment Variables (lihat `backend/.env.example`): `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, dan **`CORS_ORIGINS` wajib diisi** dengan alamat frontend.
+
+### 2. Proyek Frontend
+- **Root Directory:** `frontend`
+- Environment Variable: `NEXT_PUBLIC_API_URL` = `https://<backend>.vercel.app/api` (**harus diakhiri `/api`**).
+- Urutannya: deploy backend dulu untuk mendapat alamatnya, isi `NEXT_PUBLIC_API_URL` di frontend, lalu isi `CORS_ORIGINS` di backend dengan alamat frontend, dan deploy ulang keduanya.
+
+### Penyesuaian yang sudah dilakukan untuk serverless
+| Masalah | Penanganan |
+|---|---|
+| **Cache hak akses bisa basi** | `invalidate()` hanya membersihkan cache di instance yang memanggilnya. Di serverless instance lain tidak ikut tahu, sehingga izin yang sudah dicabut bisa terus dipakai. Kini cache punya masa berlaku (`ROLE_POLICY_TTL_SECONDS`, bawaan 20 detik; satuan 60 detik), jadi instance lain menyusul sendiri. |
+| **`setInterval` tidak jalan** | Pembersihan catatan login dititipkan pada lalu lintas biasa lewat middleware, paling sering sekali per jam per instance. |
+| **`app.listen()`** | Hanya dipanggil bila `process.env.VERCEL` kosong. Di Vercel, `app` diekspor sebagai handler. |
+| **Koneksi database habis** | Klien Prisma disimpan di `globalThis` agar dipakai ulang antar-permintaan, dan ukuran pool otomatis jadi 1 di Vercel (`DB_POOL_MAX`). |
+| **Peringatan `pg`** | `search_path` kini dipasang lewat parameter koneksi (`options`), bukan query tanpa `await` setelah koneksi jadi. Peringatan deprecation lama ikut hilang. |
+
+### Yang perlu diperhatikan
+- **Cold start.** Permintaan pertama setelah idle lebih lambat karena Prisma perlu dimuat.
+- **Perubahan hak akses** berlaku seketika di instance yang memprosesnya, dan paling lama ~20 detik di instance lain.
+- **`prisma db push` tidak otomatis.** Perubahan skema tetap dijalankan manual dari komputer Anda memakai `DIRECT_URL`.
+- Supabase punya batas koneksi; kalau muncul error koneksi saat ramai, turunkan `DB_POOL_MAX` atau naikkan batas di Supabase.
+
+---
+
 ## 🧪 Testing
 
 ```powershell

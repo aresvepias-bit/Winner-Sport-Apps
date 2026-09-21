@@ -50,7 +50,18 @@ const MODULE_LABELS = {
 const EDITABLE_MODULES = Object.keys(DEFAULT_POLICY);
 const ALL_MODULES = [...EDITABLE_MODULES, ...Object.keys(FIXED_POLICY)];
 
+/**
+ * Cache hak akses beserta masa berlakunya.
+ *
+ * `invalidate()` hanya membersihkan cache di proses yang memanggilnya. Saat backend
+ * berjalan sebagai banyak instance (serverless), instance lain tidak ikut tahu, jadi
+ * tanpa masa berlaku sebuah izin yang sudah dicabut bisa terus dipakai di sana.
+ * TTL pendek membuat instance lain menyusul paling lama dalam beberapa detik.
+ */
+const CACHE_TTL_MS = Number(process.env.ROLE_POLICY_TTL_SECONDS || 20) * 1000;
+
 let cache = null; // { MODULE: Set<role> }
+let cacheExpiresAt = 0;
 let loading = null;
 
 function buildCache(rows) {
@@ -67,18 +78,21 @@ function buildCache(rows) {
 
 /** Memuat kebijakan dari database sekali, lalu memakai cache sampai invalidate(). */
 function ensureLoaded() {
-  if (cache) return Promise.resolve(cache);
+  if (cache && Date.now() < cacheExpiresAt) return Promise.resolve(cache);
   if (!loading) {
     loading = prisma.rolePermission
       .findMany()
       .then((rows) => {
         cache = buildCache(rows);
+        cacheExpiresAt = Date.now() + CACHE_TTL_MS;
         return cache;
       })
       .catch((err) => {
         // Gagal baca database: pakai default, jangan sampai semua orang terkunci.
+        // Masa berlaku dibuat singkat agar cepat mencoba lagi.
         console.warn('[rolePolicy] Gagal memuat hak akses dari database, memakai default:', err.message);
         cache = buildCache([]);
+        cacheExpiresAt = Date.now() + Math.min(CACHE_TTL_MS, 5000);
         return cache;
       })
       .finally(() => {
@@ -90,6 +104,7 @@ function ensureLoaded() {
 
 function invalidate() {
   cache = null;
+  cacheExpiresAt = 0;
 }
 
 /** Role yang boleh mengakses modul (tanpa OWNER, yang selalu boleh). */
@@ -119,6 +134,7 @@ async function getModulesForRole(role) {
 }
 
 module.exports = {
+  CACHE_TTL_MS,
   DEFAULT_POLICY,
   FIXED_POLICY,
   EDITABLE_ROLES,

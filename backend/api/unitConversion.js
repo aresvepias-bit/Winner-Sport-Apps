@@ -7,7 +7,11 @@ const prisma = require('./db');
  * penjualan dalam lusin dihitung 1 pcs — bukan 12 — dan membuat HPP serta
  * pengurangan stok meleset. Sekarang rasionya diambil dari data master.
  */
+/** Alasan sama seperti rolePolicy: instance lain harus ikut menyusul. */
+const CACHE_TTL_MS = Number(process.env.UNIT_CACHE_TTL_SECONDS || 60) * 1000;
+
 let cache = null;
+let cacheExpiresAt = 0;
 let loading = null;
 
 /** Map dibuat dari nama maupun simbol satuan, keduanya huruf kecil. */
@@ -23,17 +27,19 @@ function buildCache(units) {
 }
 
 function ensureLoaded() {
-  if (cache) return Promise.resolve(cache);
+  if (cache && Date.now() < cacheExpiresAt) return Promise.resolve(cache);
   if (!loading) {
     loading = prisma.unit
       .findMany({ select: { name: true, symbol: true, ratioToPcs: true } })
       .then((units) => {
         cache = buildCache(units);
+        cacheExpiresAt = Date.now() + CACHE_TTL_MS;
         return cache;
       })
       .catch((err) => {
         console.warn('[unitConversion] Gagal memuat master satuan, memakai rasio 1:', err.message);
         cache = new Map();
+        cacheExpiresAt = Date.now() + Math.min(CACHE_TTL_MS, 5000);
         return cache;
       })
       .finally(() => {
@@ -45,6 +51,7 @@ function ensureLoaded() {
 
 function invalidate() {
   cache = null;
+  cacheExpiresAt = 0;
 }
 
 /** Berapa pcs dalam 1 satuan tersebut. Satuan tak dikenal dianggap 1. */
@@ -60,4 +67,4 @@ async function toPcs(quantity, unitName) {
   return qty * (await ratioToPcs(unitName));
 }
 
-module.exports = { ratioToPcs, toPcs, invalidate, ensureLoaded };
+module.exports = { ratioToPcs, toPcs, invalidate, ensureLoaded, CACHE_TTL_MS };

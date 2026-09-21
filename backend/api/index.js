@@ -8,6 +8,28 @@ const app = express();
 // Security header, pembatasan asal (CORS), dan batas ukuran body.
 const httpSecurity = applyHttpSecurity(app, express);
 
+/**
+ * Pembersihan catatan lama.
+ *
+ * Di serverless tidak ada proses yang hidup terus, jadi setInterval tidak bisa
+ * diandalkan. Pembersihan dititipkan pada lalu lintas biasa: paling sering
+ * sekali per jam per instance, dan tidak menahan jawaban permintaan.
+ */
+const JEDA_BERSIH_MS = 60 * 60 * 1000;
+let bersihBerikutnya = 0;
+
+function bersihkanBilaWaktunya() {
+  if (Date.now() < bersihBerikutnya) return;
+  bersihBerikutnya = Date.now() + JEDA_BERSIH_MS;
+  require('./loginThrottle').prune().catch((e) => console.warn('[loginThrottle] gagal membersihkan:', e.message));
+  require('./loginAudit').prune().catch((e) => console.warn('[loginAudit] gagal membersihkan:', e.message));
+}
+
+app.use((req, res, next) => {
+  bersihkanBilaWaktunya();
+  next();
+});
+
 // Rute Dasar & Health Check
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
@@ -60,22 +82,19 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Port Listening
-const PORT = process.env.PORT || 5005;
-app.listen(PORT, () => {
-  console.log(`[server] Winner Sport Backend API berjalan di http://localhost:${PORT}`);
-  httpSecurity.warn();
-  require('./defaultPasswordCheck').warnAboutDefaultPasswords();
+// Di Vercel, platform yang menangani permintaan; app.listen() tidak boleh dipanggil.
+const BERJALAN_DI_SERVERLESS = Boolean(process.env.VERCEL);
 
-  // Catatan percobaan login yang sudah tenang dibuang berkala agar tabel tidak menumpuk.
-  const loginThrottle = require('./loginThrottle');
-  const loginAudit = require('./loginAudit');
-  const bersihkan = () => {
-    loginThrottle.prune().catch((e) => console.warn('[loginThrottle] gagal membersihkan:', e.message));
-    loginAudit.prune().catch((e) => console.warn('[loginAudit] gagal membersihkan:', e.message));
-  };
-  bersihkan();
-  setInterval(bersihkan, 60 * 60 * 1000).unref();
-});
+if (!BERJALAN_DI_SERVERLESS) {
+  const PORT = process.env.PORT || 5005;
+  app.listen(PORT, () => {
+    console.log(`[server] Winner Sport Backend API berjalan di http://localhost:${PORT}`);
+    httpSecurity.warn();
+    require('./defaultPasswordCheck').warnAboutDefaultPasswords();
+    bersihkanBilaWaktunya();
+  });
+} else {
+  httpSecurity.warn();
+}
 
 module.exports = app;
