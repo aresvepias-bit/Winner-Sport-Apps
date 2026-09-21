@@ -1,9 +1,10 @@
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../api/db');
 const { JWT_SECRET } = require('../api/authMiddleware');
 const rolePolicy = require('../api/rolePolicy');
 const loginThrottle = require('../api/loginThrottle');
+const passwordHash = require('../api/passwordHash');
+const loginAudit = require('../api/loginAudit');
 
 // Masa berlaku token. Sengaja pendek: token tidak bisa dicabut satu per satu,
 // hanya lewat tokenVersion (yang mencabut seluruh sesi pengguna itu).
@@ -38,6 +39,7 @@ const authController = {
 
       const kunci = await loginThrottle.check(email, ip);
       if (kunci.locked) {
+        await loginAudit.record({ req, email, success: false, reason: 'TERKUNCI' });
         const menit = Math.ceil(kunci.retryAfterSeconds / 60);
         res.set('Retry-After', String(kunci.retryAfterSeconds));
         return res.status(429).json({
@@ -50,9 +52,13 @@ const authController = {
 
       // Akun nonaktif diperlakukan sama dengan password salah, tanpa petunjuk tambahan.
       const boleh = user && user.isActive;
-      const cocok = await bcrypt.compare(password, boleh ? user.password : DUMMY_HASH);
+      const cocok = await passwordHash.compare(password, boleh ? user.password : DUMMY_HASH);
 
       if (!boleh || !cocok) {
+        await loginAudit.record({
+          req, email, userId: user ? user.id : null, success: false,
+          reason: !user ? 'EMAIL_TIDAK_DIKENAL' : !user.isActive ? 'AKUN_NONAKTIF' : 'PASSWORD_SALAH'
+        });
         const gagal = await loginThrottle.recordFailure(email, ip);
         if (gagal.retryAfterSeconds > 0) {
           const menit = Math.ceil(gagal.retryAfterSeconds / 60);
@@ -66,11 +72,19 @@ const authController = {
       }
 
       const sekarang = new Date();
+      // Hash lama (cost lebih rendah) ditulis ulang diam-diam saat pemiliknya login,
+      // sehingga akun lama ikut naik tingkat tanpa perlu mengganti password.
+      const perluNaik = passwordHash.needsRehash(user.password);
       await Promise.all([
         loginThrottle.recordSuccess(email, ip),
+        loginAudit.record({ req, email, userId: user.id, success: true }),
         prisma.user.update({
           where: { id: user.id },
-          data: { lastLoginAt: sekarang, lastSeenAt: sekarang }
+          data: {
+            lastLoginAt: sekarang,
+            lastSeenAt: sekarang,
+            ...(perluNaik ? { password: await passwordHash.hash(password) } : {})
+          }
         })
       ]);
 

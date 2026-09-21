@@ -1,23 +1,12 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const prisma = require('./db');
+const { applyHttpSecurity } = require('./httpSecurity');
 
 const app = express();
 
-// Middleware
-app.use(cors({
-  origin: (origin, callback) => {
-    // Izinkan semua origin (Localhost frontend 3000/3001, IP Proxmox, dll)
-    callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
-}));
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Security header, pembatasan asal (CORS), dan batas ukuran body.
+const httpSecurity = applyHttpSecurity(app, express);
 
 // Rute Dasar & Health Check
 app.get('/favicon.ico', (req, res) => res.status(204).end());
@@ -59,6 +48,12 @@ app.use('/api/users', require('../routes/userRouter'));
 
 // Global Error Handler
 app.use((err, req, res, next) => {
+  if (err && /tidak diizinkan/.test(err.message || '')) {
+    return res.status(403).json({ error: err.message });
+  }
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Data yang dikirim terlalu besar.' });
+  }
   console.error('[server error]:', err.message || err);
   res.status(err.status || 500).json({
     error: err.message || 'Internal Server Error'
@@ -69,12 +64,16 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5005;
 app.listen(PORT, () => {
   console.log(`[server] Winner Sport Backend API berjalan di http://localhost:${PORT}`);
+  httpSecurity.warn();
   require('./defaultPasswordCheck').warnAboutDefaultPasswords();
 
   // Catatan percobaan login yang sudah tenang dibuang berkala agar tabel tidak menumpuk.
   const loginThrottle = require('./loginThrottle');
-  const bersihkan = () =>
+  const loginAudit = require('./loginAudit');
+  const bersihkan = () => {
     loginThrottle.prune().catch((e) => console.warn('[loginThrottle] gagal membersihkan:', e.message));
+    loginAudit.prune().catch((e) => console.warn('[loginAudit] gagal membersihkan:', e.message));
+  };
   bersihkan();
   setInterval(bersihkan, 60 * 60 * 1000).unref();
 });

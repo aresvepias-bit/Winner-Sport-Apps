@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const permissionController = require('../controllers/permissionController');
+const loginAuditController = require('../controllers/loginAuditController');
 const { verifyToken, checkRole } = require('../api/authMiddleware');
 
 // Seluruh menu Pengguna & Hak Akses hanya untuk OWNER dan ADMIN.
@@ -11,6 +12,9 @@ router.use(verifyToken, checkRole('USER_ADMIN'));
 // Matriks hak akses per role (harus sebelum /:id agar tidak tertangkap sebagai id)
 router.get('/permissions', permissionController.getPermissions);
 router.put('/permissions', permissionController.updatePermissions);
+
+// Riwayat percobaan login (sebelum /:id agar tidak tertangkap sebagai id)
+router.get('/login-audit', loginAuditController.getAudit);
 
 // Akun pengguna
 router.get('/', userController.getUsers);

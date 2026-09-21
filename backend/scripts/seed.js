@@ -1,5 +1,5 @@
 require('dotenv').config({ path: __dirname + '/../.env' });
-const bcrypt = require('bcryptjs');
+const passwordHash = require('../api/passwordHash');
 const prisma = require('../api/db');
 
 async function main() {
@@ -9,7 +9,7 @@ async function main() {
   // Tidak ada password tetap di repo: pakai SEED_PASSWORD, atau buat acak dan tampilkan sekali.
   const seedPassword = process.env.SEED_PASSWORD || require('crypto').randomBytes(9).toString('base64url');
   const generated = !process.env.SEED_PASSWORD;
-  const hashedPassword = await bcrypt.hash(seedPassword, 10);
+  const hashedPassword = await passwordHash.hash(seedPassword);
 
   const owner = await prisma.user.upsert({
     where: { email: 'owner@winnersport.com' },

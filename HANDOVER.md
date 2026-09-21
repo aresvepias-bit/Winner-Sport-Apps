@@ -197,7 +197,19 @@ Catatan perilaku yang disengaja:
 - **Login berhasil hanya membersihkan hitungan email, bukan IP.** Satu login benar tidak boleh menghapus jejak puluhan kegagalan dari sumber yang sama.
 - Catatan lama dibersihkan otomatis tiap jam (`loginThrottle.prune()`).
 
-**Belum dikerjakan (tahap 2):** helmet, CORS daftar putih, batas body JSON turun dari 50 MB, bcrypt cost 12, dan riwayat login yang bisa dilihat OWNER. Token masih disimpan di `localStorage`, jadi masih terpapar XSS.
+### Pengamanan lapis berikutnya (tahap 2)
+
+| Perlindungan | Cara kerja |
+|---|---|
+| **Security header** | `helmet` di `api/httpSecurity.js`. CSP dimatikan (API ini tidak menyajikan HTML) dan `crossOriginResourcePolicy` dibuat `cross-origin` agar logo tetap termuat frontend. `x-powered-by` dimatikan. |
+| **CORS terbatas** | Isi `CORS_ORIGINS` (dipisah koma) di server produksi. Bila kosong, hanya localhost & jaringan lokal (10.x, 192.168.x, 172.16-31.x) yang diterima, dan server memberi peringatan saat start. Permintaan tanpa header `Origin` (curl, antar-server) tetap dilayani — CORS memang hanya berlaku di browser. |
+| **Batas body** | 1 MB (`BODY_LIMIT`), turun dari 50 MB. Kiriman lebih besar dijawab 413. |
+| **Kekuatan hash** | bcrypt cost 12 (`BCRYPT_COST`) lewat `api/passwordHash.js`. Hash lama cost 10 **ditulis ulang otomatis saat pemiliknya login**, jadi seluruh akun ikut naik tanpa perlu ganti password. |
+| **Riwayat login** | Tabel `LoginAudit` + tab **Riwayat Login** di menu Pengguna (OWNER/ADMIN). Mencatat email, hasil, alasan gagal, IP, dan peramban — **tidak pernah password**. Disimpan 90 hari (`LOGIN_AUDIT_RETENTION_DAYS`), dibersihkan otomatis tiap jam. |
+
+**Sebelum deploy:** isi `CORS_ORIGINS` dengan alamat frontend. Tanpa itu, akses dari internet akan ditolak (aman, tapi aplikasi tidak bisa dipakai dari luar jaringan lokal).
+
+**Masih terbuka:** token disimpan di `localStorage`, jadi masih terpapar XSS — memindahkannya ke cookie `httpOnly` adalah perubahan besar dan belum dikerjakan. `npm audit` melaporkan kerentanan `mysql2`; itu bawaan Prisma, tidak dipakai proyek ini (databasenya PostgreSQL), dan perbaikannya menurunkan Prisma ke versi lama — sengaja dibiarkan.
 
 **Lupa password tanpa email:** OWNER/ADMIN reset lewat menu Pengguna; kalau OWNER sendiri lupa, pakai `node scripts/set-password.js <email>` di terminal server. Keduanya sudah otomatis mencabut sesi lama.
 

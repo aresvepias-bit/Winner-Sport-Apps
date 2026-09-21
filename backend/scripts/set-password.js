@@ -7,7 +7,7 @@
  *   node scripts/set-password.js admin@winnersport.com
  */
 require('dotenv').config({ path: __dirname + '/../.env', quiet: true });
-const bcrypt = require('bcryptjs');
+const passwordHash = require('../api/passwordHash');
 
 const KNOWN_DEFAULTS = ['admin123'];
 const MIN_LENGTH = 10;
@@ -81,7 +81,7 @@ async function main() {
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { password: await bcrypt.hash(pw1, 10), tokenVersion: { increment: 1 } }
+    data: { password: await passwordHash.hash(pw1), tokenVersion: { increment: 1 } }
   });
   console.log('Password berhasil diganti. Semua sesi lama akun ini langsung diakhiri.');
   await prisma.$disconnect();

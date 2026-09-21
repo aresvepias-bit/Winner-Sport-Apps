@@ -14,6 +14,7 @@ function matches(row, where = {}) {
       // Operator yang benar-benar dipakai kode produksi didukung; sisanya dilewati.
       if (Array.isArray(val.in)) return val.in.includes(row[key]);
       if (val.lt !== undefined) return new Date(row[key]) < new Date(val.lt);
+      if (val.gte !== undefined) return new Date(row[key]) >= new Date(val.gte);
       return true;
     }
     return row[key] === val;
@@ -113,8 +114,22 @@ const MODELS = [
  * Harus dipanggil SEBELUM controller di-require.
  */
 function installStub(seed = {}) {
-  const prisma = { $transaction: async (arg) => (typeof arg === 'function' ? arg(prisma) : Promise.all(arg)) };
-  for (const m of MODELS) prisma[m] = makeModel(m, seed[m] || []);
+  const target = { $transaction: async (arg) => (typeof arg === 'function' ? arg(prisma) : Promise.all(arg)) };
+
+  // Model yang umum dipakai dibuat di awal agar Object.values(prisma) melihatnya.
+  for (const m of new Set([...MODELS, ...Object.keys(seed)])) target[m] = makeModel(m, seed[m] || []);
+
+  // Model lain dibuat saat pertama diakses, lalu disimpan sebagai properti biasa.
+  // Tanpa ini, setiap tabel baru di schema.prisma akan membuat test gagal dengan
+  // pesan "reading 'rows' of undefined" yang menyesatkan.
+  const prisma = new Proxy(target, {
+    get(obj, prop) {
+      if (prop in obj) return obj[prop];
+      if (typeof prop !== 'string' || prop.startsWith('$') || prop === 'then' || prop === 'inspect') return undefined;
+      obj[prop] = makeModel(prop, seed[prop] || []);
+      return obj[prop];
+    }
+  });
 
   const dbPath = require.resolve(path.join(__dirname, '../../api/db.js'));
   require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: prisma };

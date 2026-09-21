@@ -1,13 +1,14 @@
 "use client";
 
-import { Users, ShieldCheck } from "lucide-react";
+import { Users, ShieldCheck, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type UsersTabType = "accounts" | "permissions";
+export type UsersTabType = "accounts" | "permissions" | "audit";
 
 const TABS: Array<{ key: UsersTabType; label: string; icon: typeof Users }> = [
   { key: "accounts", label: "Akun Pengguna", icon: Users },
-  { key: "permissions", label: "Matriks Hak Akses", icon: ShieldCheck }
+  { key: "permissions", label: "Matriks Hak Akses", icon: ShieldCheck },
+  { key: "audit", label: "Riwayat Login", icon: History }
 ];
 
 interface UsersNavTabsProps {

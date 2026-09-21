@@ -10,6 +10,7 @@ import UsersTable from "@/components/users/UsersTable";
 import UserFormModal from "@/components/users/UserFormModal";
 import ResetPasswordModal from "@/components/users/ResetPasswordModal";
 import PermissionMatrix, { PermissionData } from "@/components/users/PermissionMatrix";
+import LoginAuditTable, { LoginAuditEntry, LoginAuditSummary } from "@/components/users/LoginAuditTable";
 import type { AppUser } from "@/components/users/userRoles";
 
 type ModalState =
@@ -22,6 +23,8 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState<UsersTabType>("accounts");
   const [users, setUsers] = useState<AppUser[]>([]);
   const [permissions, setPermissions] = useState<PermissionData | null>(null);
+  const [audit, setAudit] = useState<{ entries: LoginAuditEntry[]; summary?: LoginAuditSummary; retentionDays?: number } | null>(null);
+  const [onlyFailed, setOnlyFailed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [modal, setModal] = useState<ModalState>(null);
@@ -36,15 +39,17 @@ export default function UsersPage() {
       if (activeTab === "accounts") {
         const res = await api.get("/users");
         setUsers(Array.isArray(res) ? res : []);
-      } else {
+      } else if (activeTab === "permissions") {
         setPermissions(await api.get("/users/permissions"));
+      } else {
+        setAudit(await api.get(`/users/login-audit?limit=200&onlyFailed=${onlyFailed}`));
       }
     } catch (err: any) {
       setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, onlyFailed]);
 
   useEffect(() => {
     load();
@@ -132,6 +137,16 @@ export default function UsersPage() {
 
       {activeTab === "permissions" && permissions && (
         <PermissionMatrix data={permissions} currentRole={me?.role} onSave={handleSavePermissions} />
+      )}
+
+      {activeTab === "audit" && audit && (
+        <LoginAuditTable
+          entries={audit.entries || []}
+          summary={audit.summary}
+          retentionDays={audit.retentionDays}
+          onlyFailed={onlyFailed}
+          onToggleFilter={setOnlyFailed}
+        />
       )}
 
       {(modal?.kind === "create" || modal?.kind === "edit") && (

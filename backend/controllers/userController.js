@@ -1,5 +1,5 @@
-const bcrypt = require('bcryptjs');
 const prisma = require('../api/db');
+const passwordHash = require('../api/passwordHash');
 
 const ROLES = ['OWNER', 'ADMIN', 'WAREHOUSE', 'PRODUCTION', 'SALES', 'ACCOUNTING'];
 const MIN_PASSWORD_LENGTH = 10;
@@ -76,7 +76,7 @@ const userController = {
         data: {
           name: name.trim(),
           email: cleanEmail,
-          password: await bcrypt.hash(password, 10),
+          password: await passwordHash.hash(password),
           role,
           phone: phone || null
         },
@@ -160,7 +160,7 @@ const userController = {
       // tokenVersion naik: seluruh sesi lama pemilik akun ini langsung ditolak.
       await prisma.user.update({
         where: { id },
-        data: { password: await bcrypt.hash(password, 10), tokenVersion: { increment: 1 } }
+        data: { password: await passwordHash.hash(password), tokenVersion: { increment: 1 } }
       });
       res.json({ message: 'Password akun berhasil diganti. Sesi lama akun ini otomatis diakhiri.' });
     } catch (err) {

@@ -79,6 +79,24 @@ model LoginThrottle {
   @@schema("winner_sport")
 }
 
+/// Riwayat percobaan login, berhasil maupun gagal. Dipakai OWNER/ADMIN untuk
+/// melihat siapa yang masuk dan apakah ada yang mencoba menebak password.
+/// Password tidak pernah dicatat di sini.
+model LoginAudit {
+  id        String   @id @default(cuid())
+  email     String
+  userId    String?
+  success   Boolean
+  reason    String? // EMAIL_TIDAK_DIKENAL, PASSWORD_SALAH, AKUN_NONAKTIF, TERKUNCI
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([email])
+  @@schema("winner_sport")
+}
+
 // -----------------------------------------------------------------------------
 // 2. MASTER DATA (KATEGORI, SATUAN, KONTAK, KARYAWAN)
 // -----------------------------------------------------------------------------
