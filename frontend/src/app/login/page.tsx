@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Lock, Mail, ArrowRight, LoaderCircle } from "lucide-react";
 import { api } from "@/lib/api";
-import { banner, hanyutLatar, kartuNaik, panelLogin, wadahBerurutan } from "@/lib/motion";
+import { banner, geserKisi, hanyutBlob, hanyutLatar, kartuNaik, panelLogin, wadahBerurutan } from "@/lib/motion";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -42,20 +42,58 @@ export default function LoginPage() {
     // yang menyetel "kurangi gerakan" di sistemnya tetap dapat tampilan diam.
     <MotionConfig reducedMotion="user">
       <div className="relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#0b1020] px-4 py-10 text-slate-900 dark:text-slate-100">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10" style={{ background: "radial-gradient(ellipse at 0% 0%, rgba(185,28,28,0.38), transparent 55%), radial-gradient(ellipse at 100% 100%, rgba(51,65,85,0.55), transparent 55%), linear-gradient(135deg, #161322 0%, #0b1020 55%, #111827 100%)" }} />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-[0.035]" style={{ backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "64px 64px" }} />
+        {/* Lapisan dasar diam; yang bergerak hanya cahaya di atasnya, supaya
+            warna latar tidak ikut berkedip. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-30"
+          style={{ background: "linear-gradient(135deg, #161322 0%, #0b1020 55%, #111827 100%)" }}
+        />
+
+        {/* Dua gumpalan cahaya menghela pelan dengan irama berbeda. */}
+        <motion.div
+          aria-hidden="true"
+          {...hanyutBlob(56, 38, 23)}
+          className="pointer-events-none absolute -left-[22vmax] -top-[28vmax] -z-20 h-[72vmax] w-[72vmax] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(185,28,28,0.42) 0%, rgba(185,28,28,0.14) 38%, transparent 66%)" }}
+        />
+        <motion.div
+          aria-hidden="true"
+          {...hanyutBlob(-46, -34, 31)}
+          className="pointer-events-none absolute -bottom-[26vmax] -right-[22vmax] -z-20 h-[70vmax] w-[70vmax] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(51,65,85,0.6) 0%, rgba(51,65,85,0.2) 40%, transparent 68%)" }}
+        />
+        <motion.div
+          aria-hidden="true"
+          {...hanyutBlob(38, -28, 27)}
+          className="pointer-events-none absolute left-[calc(50%-23vmax)] top-1/3 -z-20 h-[46vmax] w-[46vmax] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(220,38,38,0.16) 0%, transparent 62%)" }}
+        />
+
+        {/* Kisi bergeser satu petak lalu mengulang; sambungannya tidak terlihat. */}
+        <motion.div
+          aria-hidden="true"
+          {...geserKisi(64, 28)}
+          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.035]"
+          style={{
+            backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)",
+            backgroundSize: "64px 64px"
+          }}
+        />
 
         {/* Dua bingkai latar hanyut sangat pelan dengan irama berbeda, supaya
             layar terasa hidup tanpa menarik perhatian dari formulir. */}
         <motion.div
           aria-hidden="true"
           {...hanyutLatar(18, 17)}
-          className="pointer-events-none absolute -left-48 top-1/4 -z-10 h-96 w-96 rotate-45 rounded-[64px] border border-white/[0.06] sm:-left-24"
+          style={{ rotate: 45 }}
+          className="pointer-events-none absolute -left-48 top-1/4 -z-10 h-96 w-96 rounded-[64px] border border-white/[0.06] sm:-left-24"
         />
         <motion.div
           aria-hidden="true"
           {...hanyutLatar(14, 21)}
-          className="pointer-events-none absolute -right-48 bottom-1/4 -z-10 h-96 w-96 rotate-45 rounded-[64px] border border-red-400/10 sm:-right-24"
+          style={{ rotate: 45 }}
+          className="pointer-events-none absolute -right-48 bottom-1/4 -z-10 h-96 w-96 rounded-[64px] border border-red-400/10 sm:-right-24"
         />
 
         <motion.div
