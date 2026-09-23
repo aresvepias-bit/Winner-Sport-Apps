@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import { exportToCsv } from "@/lib/exportUtils";
 import ErrorBanner from "@/components/common/ErrorBanner";
@@ -180,13 +181,15 @@ export default function PurchasingPage() {
       )}
 
       {/* 6. Proses penerimaan barang */}
-      {poDiproses && (
-        <ReceiveGoodsModal
-          po={poDiproses}
-          onClose={() => setPoDiproses(null)}
-          onSubmit={handleTerimaBarang}
-        />
-      )}
+      <AnimatePresence>
+        {poDiproses && (
+          <ReceiveGoodsModal
+            po={poDiproses}
+            onClose={() => setPoDiproses(null)}
+            onSubmit={handleTerimaBarang}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

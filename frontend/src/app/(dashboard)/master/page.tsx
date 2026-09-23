@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { DatabaseZap, Plus, Settings2 } from "lucide-react";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import MasterHeader from "@/components/master/MasterHeader";
@@ -14,6 +15,7 @@ import { FILTER_MASTER_KOSONG, saringMaster, type MasterFilterState } from "@/co
 import { CREATE_BUTTON_TEXT, EditableEntity } from "@/components/master/masterEntities";
 import { useMasterData } from "@/components/master/useMasterData";
 import { useMasterCrud } from "@/components/master/useMasterCrud";
+import { kontenBerganti } from "@/lib/motion";
 
 export default function MasterDataPage() {
   // Belum ada menu terpilih saat halaman dibuka.
@@ -69,8 +71,17 @@ export default function MasterDataPage() {
         <MasterNavTabs activeTab={activeTab} onTabChange={pilihMenu} />
 
         <section aria-labelledby="active-master-heading" className="min-w-0 space-y-5">
+          {/* Berganti menu menggeser isi secara halus, bukan melompat. */}
+          <AnimatePresence mode="wait">
           {!activeTab || !activeMenu || !ActiveIcon ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-[#0d1424]">
+            <motion.div
+              key="pilih-menu"
+              variants={kontenBerganti}
+              initial="awal"
+              animate="masuk"
+              exit="keluar"
+              className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-[#0d1424]"
+            >
               <Settings2 className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
               <h2 id="active-master-heading" className="mt-3 text-base font-bold">
                 Pilih menu master
@@ -95,9 +106,16 @@ export default function MasterDataPage() {
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           ) : (
-            <>
+            <motion.div
+              key={activeTab}
+              variants={kontenBerganti}
+              initial="awal"
+              animate="masuk"
+              exit="keluar"
+              className="space-y-5"
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <div className="rounded-2xl border border-red-100 bg-red-50 p-3 text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
@@ -171,24 +189,27 @@ export default function MasterDataPage() {
                   />
                 </>
               )}
-            </>
+            </motion.div>
           )}
+          </AnimatePresence>
         </section>
       </div>
 
       {/* Panel proses satu baris: rincian lengkap plus tindakan ubah & hapus. */}
-      {activeTab && rowDiproses && (
-        <MasterRowDrawer
-          entity={activeTab}
-          item={rowDiproses}
-          onClose={() => setRowDiproses(null)}
-          onEdit={(entity, item) => {
-            setRowDiproses(null);
-            setModal({ kind: "edit", entity, item });
-          }}
-          onDelete={handleHapus}
-        />
-      )}
+      <AnimatePresence>
+        {activeTab && rowDiproses && (
+          <MasterRowDrawer
+            entity={activeTab}
+            item={rowDiproses}
+            onClose={() => setRowDiproses(null)}
+            onEdit={(entity, item) => {
+              setRowDiproses(null);
+              setModal({ kind: "edit", entity, item });
+            }}
+            onDelete={handleHapus}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Create & Edit Modals */}
       <MasterModals

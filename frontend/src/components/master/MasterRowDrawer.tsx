@@ -1,7 +1,9 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Pencil, Trash2, X } from "lucide-react";
 import { formatRupiah, formatNumber } from "@/lib/utils";
+import { backdropModal, panelModal } from "@/lib/motion";
 import type { MasterEntity, EditableEntity } from "@/components/master/masterEntities";
 
 /**
@@ -96,8 +98,22 @@ export default function MasterRowDrawer({ entity, item, onClose, onEdit, onDelet
   const rincian = RINCIAN[entity](item);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#1a2236] dark:bg-[#0d1424]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        variants={backdropModal}
+        initial="awal"
+        animate="masuk"
+        exit="keluar"
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+      />
+      <motion.div
+        variants={panelModal}
+        initial="awal"
+        animate="masuk"
+        exit="keluar"
+        className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-[#1a2236] dark:bg-[#0d1424]"
+      >
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6 dark:border-[#1a2236]">
           <div className="min-w-0">
             <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-red-600 dark:text-red-400">
@@ -144,7 +160,7 @@ export default function MasterRowDrawer({ entity, item, onClose, onEdit, onDelet
             Hapus
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

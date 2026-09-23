@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { MotionConfig } from "framer-motion";
 import Sidebar from "@/components/sidebar";
 import { Menu, Eye, EyeOff, Calendar, Clock, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,9 @@ export default function DashboardLayout({
   if (guard.status === "forbidden") return <ForbiddenScreen role={guard.role} />;
 
   return (
+    // reducedMotion="user" mematikan gerakan bagi yang mengaturnya di sistem;
+    // animasi tetap berjalan untuk yang lain tanpa cabang kode di tiap komponen.
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
       {/* Sidebar Desktop & Mobile */}
       <Sidebar
@@ -164,5 +168,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </MotionConfig>
   );
 }

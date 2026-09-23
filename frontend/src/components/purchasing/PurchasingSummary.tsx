@@ -1,7 +1,9 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { ClipboardList, Truck, PackageCheck, Wallet } from "lucide-react";
 import { formatRupiah } from "@/lib/utils";
+import { kartuNaik, wadahBerurutan } from "@/lib/motion";
 import type { PurchaseOrderItem } from "./PurchaseOrdersTable";
 
 /** Nilai barang yang sudah dipesan tapi belum sampai di gudang. */
@@ -55,10 +57,16 @@ export default function PurchasingSummary({ orders }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <motion.div
+      variants={wadahBerurutan}
+      initial="awal"
+      animate="masuk"
+      className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
+    >
       {kartu.map(({ label, nilai, catatan, Icon, warna }) => (
-        <div
+        <motion.div
           key={label}
+          variants={kartuNaik}
           className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-5 shadow-sm dark:shadow-xl transition-colors"
         >
           <div className="flex items-start justify-between gap-3">
@@ -73,8 +81,8 @@ export default function PurchasingSummary({ orders }: Props) {
             </span>
           </div>
           <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">{catatan}</p>
-        </div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }

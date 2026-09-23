@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { PackageCheck, X } from "lucide-react";
 import { formatRupiah, formatNumber, formatDate } from "@/lib/utils";
 import NumberInput from "@/components/common/NumberInput";
+import { backdropModal, panelModal } from "@/lib/motion";
 import type { PurchaseOrderItem } from "./PurchaseOrdersTable";
 
 export interface PenerimaanBaris {
@@ -55,8 +57,22 @@ export default function ReceiveGoodsModal({ po, onClose, onSubmit }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl max-w-3xl w-full shadow-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        variants={backdropModal}
+        initial="awal"
+        animate="masuk"
+        exit="keluar"
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+      />
+      <motion.div
+        variants={panelModal}
+        initial="awal"
+        animate="masuk"
+        exit="keluar"
+        className="relative z-10 bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl max-w-3xl w-full shadow-2xl max-h-[90vh] flex flex-col"
+      >
         <div className="flex items-start justify-between gap-4 p-6 border-b border-slate-200 dark:border-[#1a2236]">
           <div>
             <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-[11px] uppercase tracking-wider mb-1">
@@ -192,7 +208,7 @@ export default function ReceiveGoodsModal({ po, onClose, onSubmit }: Props) {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

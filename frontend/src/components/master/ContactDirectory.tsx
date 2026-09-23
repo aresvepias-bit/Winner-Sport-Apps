@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Building2, DatabaseZap, Plus, RefreshCw, Users } from "lucide-react";
 import ContactsTable from "./ContactsTable";
 import CreateContactModal from "./CreateContactModal";
@@ -10,6 +11,7 @@ import MasterRowDrawer from "./MasterRowDrawer";
 import { FILTER_MASTER_KOSONG, saringMaster, type MasterFilterState } from "./masterFilter";
 import { useMasterData } from "./useMasterData";
 import { useMasterCrud } from "./useMasterCrud";
+import { kontenBerganti } from "@/lib/motion";
 import ErrorBanner from "@/components/common/ErrorBanner";
 
 export default function ContactDirectory({ contactType }: { contactType: "CUSTOMER" | "SUPPLIER" }) {
@@ -84,8 +86,18 @@ export default function ContactDirectory({ contactType }: { contactType: "CUSTOM
         tampilkanJumlah={sudahDimuat}
       />
 
+      {/* Pergantian "belum diambil" -> daftar dianimasikan supaya jelas bahwa
+          isinya berganti, bukan halaman yang melompat. */}
+      <AnimatePresence mode="wait">
       {!sudahDimuat ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-[#0d1424]">
+        <motion.div
+          key="belum"
+          variants={kontenBerganti}
+          initial="awal"
+          animate="masuk"
+          exit="keluar"
+          className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-[#0d1424]"
+        >
           <DatabaseZap className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
           <h2 className="mt-3 text-base font-bold">Data belum diambil</h2>
           <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
@@ -100,9 +112,16 @@ export default function ContactDirectory({ contactType }: { contactType: "CUSTOM
             <DatabaseZap className="h-4 w-4" />
             {loading ? "Memuat data..." : "Proses & Tampilkan Data"}
           </button>
-        </div>
+        </motion.div>
       ) : (
-        <>
+        <motion.div
+          key="daftar"
+          variants={kontenBerganti}
+          initial="awal"
+          animate="masuk"
+          exit="keluar"
+          className="space-y-6"
+        >
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {contacts.length} {label.toLowerCase()} terdaftar
           </p>
@@ -112,21 +131,24 @@ export default function ContactDirectory({ contactType }: { contactType: "CUSTOM
             onProses={setRowDiproses}
             resetKey={`${filter.cari}|${filter.status}|${filter.kategori}`}
           />
-        </>
+        </motion.div>
       )}
+      </AnimatePresence>
 
-      {rowDiproses && (
-        <MasterRowDrawer
-          entity="contacts"
-          item={rowDiproses}
-          onClose={() => setRowDiproses(null)}
-          onEdit={(_entity, item) => {
-            setRowDiproses(null);
-            setEditing(item);
-          }}
-          onDelete={handleHapus}
-        />
-      )}
+      <AnimatePresence>
+        {rowDiproses && (
+          <MasterRowDrawer
+            entity="contacts"
+            item={rowDiproses}
+            onClose={() => setRowDiproses(null)}
+            onEdit={(_entity, item) => {
+              setRowDiproses(null);
+              setEditing(item);
+            }}
+            onDelete={handleHapus}
+          />
+        )}
+      </AnimatePresence>
 
       {creating && (
         <CreateContactModal
