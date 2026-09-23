@@ -147,3 +147,70 @@ describe('productionController.completeWorkOrder', () => {
     assert.equal(Number(produk.standardCost), 20000, 'HPP standar ikut diperbarui');
   });
 });
+
+describe('pengeluaran bahan: batas stok dan keutuhan data', () => {
+  const siapkan = (stok = 500) => {
+    const wo = prisma.workOrder.rows[0];
+    wo.status = 'IN_PROGRESS';
+    wo.materialCost = 0;
+    woMaterial.actualIssuedQty = 0;
+    bahan.currentStock = stok;
+    return wo;
+  };
+
+  test('menolak jumlah melebihi stok, tanpa mengubah stok maupun biaya SPK', async () => {
+    const wo = siapkan(30);
+    const res = await call(productionController.issueMaterials, {
+      params: { id: 'wo-1' },
+      body: { materials: [{ rawMaterialId: 'rm-1', issuedQty: 100 }] }
+    });
+
+    assert.equal(res.code, 400);
+    assert.match(res.body.error, /tidak cukup/);
+    assert.equal(Number(bahan.currentStock), 30, 'stok tidak boleh minus');
+    assert.equal(Number(wo.materialCost), 0);
+  });
+
+  test('bahan di luar SPK ditolak, bukan dilewati diam-diam', async () => {
+    siapkan();
+    const res = await call(productionController.issueMaterials, {
+      params: { id: 'wo-1' },
+      body: { materials: [{ rawMaterialId: 'rm-asing', issuedQty: 5 }] }
+    });
+
+    assert.equal(res.code, 400);
+    assert.match(res.body.error, /bukan bagian dari SPK/);
+  });
+
+  test('SPK yang sudah selesai tidak bisa mengeluarkan bahan lagi', async () => {
+    const wo = siapkan();
+    wo.status = 'COMPLETED';
+    const res = await call(productionController.issueMaterials, {
+      params: { id: 'wo-1' },
+      body: { materials: [{ rawMaterialId: 'rm-1', issuedQty: 1 }] }
+    });
+    assert.equal(res.code, 400);
+    wo.status = 'IN_PROGRESS';
+  });
+
+  test('tanpa jumlah terisi ditolak', async () => {
+    siapkan();
+    for (const materials of [[], [{ rawMaterialId: 'rm-1', issuedQty: 0 }]]) {
+      const res = await call(productionController.issueMaterials, { params: { id: 'wo-1' }, body: { materials } });
+      assert.equal(res.code, 400);
+    }
+  });
+
+  test('pengeluaran sah mengurangi stok dan menambah biaya bahan sekali saja', async () => {
+    const wo = siapkan(500);
+    const res = await call(productionController.issueMaterials, {
+      params: { id: 'wo-1' },
+      body: { materials: [{ rawMaterialId: 'rm-1', issuedQty: 20 }] }
+    });
+
+    assert.equal(res.code, 200);
+    assert.equal(Number(bahan.currentStock), 480);
+    assert.equal(Number(wo.materialCost), 20 * 85000);
+    assert.equal(Number(woMaterial.actualIssuedQty), 20);
+  });
+});

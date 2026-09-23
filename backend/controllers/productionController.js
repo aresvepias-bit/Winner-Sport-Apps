@@ -136,73 +136,110 @@ const productionController = {
   async issueMaterials(req, res) {
     try {
       const { id } = req.params;
-      const { materials } = req.body;
+      const { materials } = req.body || {};
 
       const workOrder = await prisma.workOrder.findUnique({
         where: { id },
         include: { materials: { include: { rawMaterial: true } } }
       });
 
-      if (!workOrder) {
-        return res.status(404).json({ error: 'SPK tidak ditemukan.' });
+      if (!workOrder) return res.status(404).json({ error: 'SPK tidak ditemukan.' });
+      if (workOrder.status === 'COMPLETED') {
+        return res.status(400).json({ error: 'SPK sudah selesai, bahan tidak bisa dikeluarkan lagi.' });
+      }
+      if (workOrder.status === 'CANCELLED') {
+        return res.status(400).json({ error: 'SPK sudah dibatalkan.' });
+      }
+      if (!Array.isArray(materials) || materials.length === 0) {
+        return res.status(400).json({ error: 'Tidak ada bahan yang dikeluarkan.' });
       }
 
-      let totalMaterialCost = 0;
+      // Seluruh baris divalidasi lebih dulu. Sebelumnya bahan yang tidak dikenal
+      // dilewati diam-diam dan stok boleh jadi minus, tapi pengguna tetap
+      // menerima pesan berhasil.
+      const rencana = [];
+      const sudahDipakai = new Set();
 
       for (const item of materials) {
         const issued = Number(item.issuedQty);
-        if (issued <= 0) continue;
+        if (!Number.isFinite(issued) || issued <= 0) continue;
+
+        const woMat = workOrder.materials.find((m) => m.rawMaterialId === item.rawMaterialId);
+        if (!woMat) {
+          return res.status(400).json({ error: 'Ada bahan yang bukan bagian dari SPK ini.' });
+        }
+        if (sudahDipakai.has(woMat.id)) {
+          return res.status(400).json({ error: 'Bahan yang sama dikirim lebih dari sekali.' });
+        }
+        sudahDipakai.add(woMat.id);
 
         const mat = await prisma.rawMaterial.findUnique({ where: { id: item.rawMaterialId } });
-        if (!mat) continue;
-
-        const newStock = Number(mat.currentStock) - issued;
-        await prisma.rawMaterial.update({
-          where: { id: item.rawMaterialId },
-          data: { currentStock: newStock }
-        });
-
-        await prisma.stockMovement.create({
-          data: {
-            itemType: 'RAW_MATERIAL',
-            rawMaterialId: item.rawMaterialId,
-            type: 'MATERIAL_ISSUE',
-            quantity: -issued,
-            balanceAfter: newStock,
-            referenceType: 'WO',
-            referenceId: workOrder.woNumber,
-            notes: `Pengeluaran bahan baku untuk ${workOrder.woNumber}`
-          }
-        });
-
-        const itemCost = issued * Number(mat.standardCost);
-        totalMaterialCost += itemCost;
-
-        const woMat = workOrder.materials.find(m => m.rawMaterialId === item.rawMaterialId);
-        if (woMat) {
-          await prisma.workOrderMaterial.update({
-            where: { id: woMat.id },
-            data: {
-              actualIssuedQty: Number(woMat.actualIssuedQty) + issued,
-              unitCost: mat.standardCost,
-              subtotal: (Number(woMat.actualIssuedQty) + issued) * Number(mat.standardCost)
-            }
+        if (!mat) return res.status(404).json({ error: 'Bahan baku tidak ditemukan.' });
+        if (issued > Number(mat.currentStock) + 0.001) {
+          return res.status(400).json({
+            error: `Stok ${mat.name} tidak cukup: diminta ${issued}, tersedia ${Number(mat.currentStock)}.`
           });
         }
+
+        rencana.push({ woMat, mat, issued });
       }
 
-      const updatedWO = await prisma.workOrder.update({
-        where: { id },
-        data: {
-          status: 'IN_PROGRESS',
-          materialCost: Number(workOrder.materialCost) + totalMaterialCost
-        },
-        include: { materials: { include: { rawMaterial: true } } }
+      if (rencana.length === 0) {
+        return res.status(400).json({ error: 'Isi jumlah bahan yang dikeluarkan minimal pada satu baris.' });
+      }
+
+      const updatedWO = await prisma.$transaction(async (tx) => {
+        let totalMaterialCost = 0;
+
+        for (const { woMat, mat, issued } of rencana) {
+          const newStock = Number(mat.currentStock) - issued;
+          await tx.rawMaterial.update({
+            where: { id: mat.id },
+            data: { currentStock: newStock }
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              itemType: 'RAW_MATERIAL',
+              rawMaterialId: mat.id,
+              type: 'MATERIAL_ISSUE',
+              quantity: -issued,
+              balanceAfter: newStock,
+              referenceType: 'WO',
+              referenceId: workOrder.woNumber,
+              notes: `Pengeluaran bahan baku untuk ${workOrder.woNumber}`
+            }
+          });
+
+          const totalDikeluarkan = Number(woMat.actualIssuedQty) + issued;
+          await tx.workOrderMaterial.update({
+            where: { id: woMat.id },
+            data: {
+              actualIssuedQty: totalDikeluarkan,
+              unitCost: mat.standardCost,
+              subtotal: totalDikeluarkan * Number(mat.standardCost)
+            }
+          });
+
+          totalMaterialCost += issued * Number(mat.standardCost);
+        }
+
+        // Tidak ada jurnal di sini: pemakaian bahan baru dibukukan saat SPK
+        // diselesaikan (Dr Persediaan Jadi / Cr Persediaan Bahan). Menjurnal
+        // dua kali akan mengkredit persediaan bahan dobel.
+        return tx.workOrder.update({
+          where: { id },
+          data: {
+            status: 'IN_PROGRESS',
+            materialCost: Number(workOrder.materialCost) + totalMaterialCost
+          },
+          include: { materials: { include: { rawMaterial: true } } }
+        });
       });
 
       res.json({ message: 'Bahan berhasil dikeluarkan ke produksi.', workOrder: updatedWO });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      res.status(err.status || 500).json({ error: err.message });
     }
   },
 
