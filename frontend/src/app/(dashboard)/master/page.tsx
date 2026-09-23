@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Settings2 } from "lucide-react";
+import { DatabaseZap, Plus, Settings2 } from "lucide-react";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import MasterHeader from "@/components/master/MasterHeader";
 import MasterNavTabs, { MASTER_MENUS, MasterTabType } from "@/components/master/MasterNavTabs";
@@ -16,13 +16,14 @@ import { useMasterData } from "@/components/master/useMasterData";
 import { useMasterCrud } from "@/components/master/useMasterCrud";
 
 export default function MasterDataPage() {
-  // Belum ada menu terpilih saat halaman dibuka: data baru diambil setelah diklik.
+  // Belum ada menu terpilih saat halaman dibuka.
   const [activeTab, setActiveTab] = useState<MasterTabType | null>(null);
   const [modal, setModal] = useState<MasterModalState>(null);
   const [filter, setFilter] = useState<MasterFilterState>(FILTER_MASTER_KOSONG);
   const [rowDiproses, setRowDiproses] = useState<any>(null);
 
-  const { data, loading, loadError, load } = useMasterData(activeTab);
+  // autoLoad dimatikan: memilih menu belum menarik data, harus ditekan Proses dulu.
+  const { data, loading, loadError, load, sudahDimuat } = useMasterData(activeTab, { autoLoad: false });
   const crud = useMasterCrud(load);
   const activeMenu = MASTER_MENUS.find((menu) => menu.key === activeTab);
   const ActiveIcon = activeMenu?.icon;
@@ -33,8 +34,8 @@ export default function MasterDataPage() {
     [activeTab, rowsTab, filter]
   );
 
-  // Ganti menu selalu memulai dengan filter bersih, agar hasil kosong dari tab
-  // sebelumnya tidak terbawa dan terlihat seperti data yang hilang.
+  // Ganti menu hanya memindah tampilan dan membersihkan filter; pengambilan
+  // data menunggu tombol Proses ditekan.
   const pilihMenu = (tab: MasterTabType) => {
     setActiveTab(tab);
     setFilter(FILTER_MASTER_KOSONG);
@@ -75,7 +76,8 @@ export default function MasterDataPage() {
                 Pilih menu master
               </h2>
               <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
-                Data baru diambil setelah menu dipilih, jadi halaman ini terbuka seketika.
+                Pilih menu, atur filternya, lalu tekan Proses. Tidak ada data yang ditarik
+                sebelum itu, jadi halaman ini terbuka seketika.
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {MASTER_MENUS.map((menu) => {
@@ -123,31 +125,54 @@ export default function MasterDataPage() {
                 )}
               </div>
 
-              <MasterKpiBar
-                activeTab={activeTab}
-                materials={data.materials}
-                products={data.products}
-                boms={data.boms}
-                contacts={data.contacts}
-                employees={data.employees}
-              />
-
               <MasterFilterBar
                 entity={activeTab}
                 rows={rowsTab}
                 nilai={filter}
                 onChange={setFilter}
                 jumlahTampil={rowsTersaring.length}
+                tampilkanJumlah={sudahDimuat}
               />
 
-              <MasterTabViews
-                activeTab={activeTab}
-                rows={rowsTersaring}
-                resetKey={`${activeTab}|${filter.cari}|${filter.status}|${filter.kategori}`}
-                onProses={setRowDiproses}
-                onEdit={(entity, item) => setModal({ kind: "edit", entity, item })}
-                onDelete={handleHapus}
-              />
+              {!sudahDimuat ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-700 dark:bg-[#0d1424]">
+                  <DatabaseZap className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+                  <h3 className="mt-3 text-base font-bold">Data belum diambil</h3>
+                  <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+                    Atur filter di atas bila perlu, lalu tekan Proses untuk mengambil data{" "}
+                    {activeMenu.label.toLocaleLowerCase("id")} dari server.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={load}
+                    disabled={loading}
+                    className="mt-5 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm shadow-red-600/20 transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <DatabaseZap className="h-4 w-4" />
+                    {loading ? "Memuat data..." : "Proses & Tampilkan Data"}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <MasterKpiBar
+                    activeTab={activeTab}
+                    materials={data.materials}
+                    products={data.products}
+                    boms={data.boms}
+                    contacts={data.contacts}
+                    employees={data.employees}
+                  />
+
+                  <MasterTabViews
+                    activeTab={activeTab}
+                    rows={rowsTersaring}
+                    resetKey={`${activeTab}|${filter.cari}|${filter.status}|${filter.kategori}`}
+                    onProses={setRowDiproses}
+                    onEdit={(entity, item) => setModal({ kind: "edit", entity, item })}
+                    onDelete={handleHapus}
+                  />
+                </>
+              )}
             </>
           )}
         </section>

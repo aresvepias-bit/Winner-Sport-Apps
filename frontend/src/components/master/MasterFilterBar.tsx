@@ -20,9 +20,11 @@ interface Props {
   nilai: MasterFilterState;
   onChange: (nilai: MasterFilterState) => void;
   jumlahTampil: number;
+  /** Hitungan baris disembunyikan sebelum data diambil supaya tidak terbaca "0 data". */
+  tampilkanJumlah?: boolean;
 }
 
-export default function MasterFilterBar({ entity, rows, nilai, onChange, jumlahTampil }: Props) {
+export default function MasterFilterBar({ entity, rows, nilai, onChange, jumlahTampil, tampilkanJumlah = true }: Props) {
   const status = konfigStatus(entity);
   const kategori = konfigKategori(entity);
   const daftarKategori = opsiKategori(entity, rows);
@@ -86,7 +88,13 @@ export default function MasterFilterBar({ entity, rows, nilai, onChange, jumlahT
 
       <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
         <span>
-          Menampilkan <strong className="text-slate-700 dark:text-slate-200">{jumlahTampil}</strong> dari {rows.length} data
+          {tampilkanJumlah ? (
+            <>
+              Menampilkan <strong className="text-slate-700 dark:text-slate-200">{jumlahTampil}</strong> dari {rows.length} data
+            </>
+          ) : (
+            "Filter diterapkan saat data diproses."
+          )}
         </span>
         {adaFilterAktif(nilai) && (
           <button

@@ -18,15 +18,19 @@ export interface MasterData {
  * Memuat data tab yang sedang aktif.
  *
  * Selama belum ada menu yang dipilih (`activeTab` null) tidak ada permintaan
- * yang dikirim: membuka halaman master tidak lagi otomatis menarik seluruh
- * daftar bahan baku dari server.
+ * yang dikirim. Dengan `autoLoad: false` pemanggilan sepenuhnya manual:
+ * memilih menu pun belum menarik data, halaman yang memutuskan kapan `load()`
+ * dijalankan. Halaman yang memang ingin langsung terisi (mis. daftar Customer
+ * dan Supplier) memakai perilaku bawaan.
  */
-export function useMasterData(activeTab: MasterEntity | null) {
+export function useMasterData(activeTab: MasterEntity | null, options: { autoLoad?: boolean } = {}) {
+  const { autoLoad = true } = options;
   const [data, setData] = useState<MasterData>({
     materials: [], products: [], boms: [], contacts: [], employees: [], units: [], salesTypes: []
   });
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [termuat, setTermuat] = useState<Partial<Record<MasterEntity, boolean>>>({});
 
   const load = useCallback(async () => {
     if (!activeTab) return;
@@ -35,6 +39,7 @@ export function useMasterData(activeTab: MasterEntity | null) {
     try {
       const res = await api.get(MASTER_ENTITIES[activeTab].path);
       setData((prev) => ({ ...prev, [activeTab]: res || [] }));
+      setTermuat((prev) => ({ ...prev, [activeTab]: true }));
     } catch (err: any) {
       setLoadError(err.message || "Terjadi kesalahan saat menghubungi server.");
     } finally {
@@ -43,8 +48,11 @@ export function useMasterData(activeTab: MasterEntity | null) {
   }, [activeTab]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (autoLoad) load();
+  }, [autoLoad, load]);
 
-  return { data, loading, loadError, load };
+  /** Tab yang sedang aktif sudah pernah diambil datanya. */
+  const sudahDimuat = activeTab ? !!termuat[activeTab] : false;
+
+  return { data, loading, loadError, load, sudahDimuat };
 }
