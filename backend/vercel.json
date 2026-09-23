@@ -4,8 +4,23 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node",
-      "config": { "includeFiles": ["controllers/**", "routes/**", "api/**", "prisma/**"] }
+      "config": {
+        "includeFiles": [
+          "controllers/**",
+          "routes/**",
+          "api/**",
+          "prisma/**"
+        ]
+      }
     }
   ],
-  "routes": [{ "src": "/(.*)", "dest": "/api/index.js" }]
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.js"
+    }
+  ],
+  "regions": [
+    "sin1"
+  ]
 }

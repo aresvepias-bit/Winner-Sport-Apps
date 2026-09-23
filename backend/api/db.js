@@ -13,9 +13,10 @@ const { parse } = require('pg-connection-string');
  * Tanpa ini, tiap muat ulang membuka pool baru dan koneksi Supabase cepat habis.
  */
 
-// Di serverless tiap instance melayani satu permintaan pada satu waktu, jadi pool
-// besar hanya memboroskan kuota koneksi Supabase yang dipakai bersama semua instance.
-const POOL_MAX = Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 1 : 10));
+// Pool tidak boleh 1 di serverless: query yang dikirim bersamaan lewat Promise.all
+// akan antre satu per satu dan halaman jadi lambat berlipat. Angka kecil tetap
+// dipakai supaya banyak instance tidak menghabiskan kuota koneksi Supabase.
+const POOL_MAX = Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 5 : 10));
 
 function createPrisma() {
   try {

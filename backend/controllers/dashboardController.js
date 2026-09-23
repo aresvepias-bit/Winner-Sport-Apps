@@ -27,7 +27,13 @@ const dashboardController = {
       // Awal jendela tren: awal bulan, (TREND_MONTHS - 1) bulan ke belakang.
       const trendStart = new Date(now.getFullYear(), now.getMonth() - (TREND_MONTHS - 1), 1);
 
-      const [allOrders, expenses, rawMaterials, products] = await Promise.all([
+      // Semua pengambilan data dikirim sekaligus. Tidak ada yang bergantung pada
+      // hasil yang lain, jadi menunggunya bergantian hanya menambah waktu tunggu
+      // sebanyak jumlah kelompoknya — terasa sekali saat database jauh.
+      const [
+        allOrders, expenses, rawMaterials, products,
+        cashAccounts, workOrders, unpaidInvoices, unpaidPOs
+      ] = await Promise.all([
         prisma.salesOrder.findMany({
           where: { status: { not: 'CANCELLED' } },
           include: { items: { include: { product: true } } },
@@ -35,7 +41,21 @@ const dashboardController = {
         }),
         prisma.expense.findMany(),
         prisma.rawMaterial.findMany(),
-        prisma.product.findMany()
+        prisma.product.findMany(),
+        prisma.account.findMany({
+          where: {
+            OR: [
+              { name: { contains: 'Kas', mode: 'insensitive' } },
+              { name: { contains: 'Bank', mode: 'insensitive' } },
+              { code: { startsWith: '10' } },
+              { code: { startsWith: '11' } }
+            ]
+          },
+          orderBy: { code: 'asc' }
+        }),
+        prisma.workOrder.findMany({ select: { status: true } }),
+        prisma.invoice.findMany({ where: { status: { in: ['UNPAID', 'PARTIAL'] } } }),
+        prisma.purchaseOrder.findMany({ where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } })
       ]);
 
       // --- Kerangka bulan untuk tren (selalu 6 bulan, bulan kosong tetap tampil sebagai 0)
@@ -107,31 +127,15 @@ const dashboardController = {
       const productValue = products.reduce((acc, p) => acc + Number(p.currentStock) * Number(p.standardCost), 0);
 
       // --- Kas & bank
-      const cashAccounts = await prisma.account.findMany({
-        where: {
-          OR: [
-            { name: { contains: 'Kas', mode: 'insensitive' } },
-            { name: { contains: 'Bank', mode: 'insensitive' } },
-            { code: { startsWith: '10' } },
-            { code: { startsWith: '11' } }
-          ]
-        },
-        orderBy: { code: 'asc' }
-      });
       const cashPosition = cashAccounts.reduce((acc, a) => acc + Number(a.balance), 0);
 
       // --- Produksi
-      const workOrders = await prisma.workOrder.findMany({ select: { status: true } });
       const productionByStatus = {};
       for (const wo of workOrders) productionByStatus[wo.status] = (productionByStatus[wo.status] || 0) + 1;
       const activeStatuses = ['DRAFT', 'PENDING_MATERIAL', 'IN_PROGRESS'];
       const activeCount = activeStatuses.reduce((acc, s) => acc + (productionByStatus[s] || 0), 0);
 
       // --- Piutang & hutang
-      const [unpaidInvoices, unpaidPOs] = await Promise.all([
-        prisma.invoice.findMany({ where: { status: { in: ['UNPAID', 'PARTIAL'] } } }),
-        prisma.purchaseOrder.findMany({ where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } } })
-      ]);
       const totalReceivable = unpaidInvoices.reduce((acc, i) => acc + (Number(i.totalAmount) - Number(i.paidAmount)), 0);
       const totalPayable = unpaidPOs.reduce((acc, po) => acc + (Number(po.totalAmount) - Number(po.paidAmount)), 0);
 
