@@ -526,7 +526,7 @@ model PurchaseOrder {
   supplierId    String
   orderDate     DateTime  @default(now())
   expectedDate  DateTime?
-  status        String    @default("DRAFT") // DRAFT, ORDERED, RECEIVED, CANCELLED
+  status        String    @default("DRAFT") // DRAFT, ORDERED, PARTIAL, RECEIVED, CANCELLED
   totalAmount   Decimal   @default(0) @db.Decimal(15, 2)
   paidAmount    Decimal   @default(0) @db.Decimal(15, 2)
   paymentStatus PaymentStatus @default(UNPAID)

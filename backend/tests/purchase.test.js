@@ -4,12 +4,18 @@ const { installStub, mockRes, mockReq } = require('./helpers/stubPrisma');
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'secret-untuk-test-' + 'x'.repeat(30);
 
+const AKUN_AWAL = [
+  { id: 'a-bahan', code: '1201', name: 'Persediaan Bahan', type: 'ASSET', balance: 0 },
+  { id: 'a-hutang', code: '2001', name: 'Hutang Supplier', type: 'LIABILITY', balance: 0 }
+];
+
 const prisma = installStub({
+  account: AKUN_AWAL.map((a) => ({ ...a })),
   rawMaterial: [{ id: 'rm-1', name: 'Kain Dryfit', currentStock: 50, standardCost: 85000 }],
   purchaseOrder: [{
     id: 'po-1', poNumber: 'PO-000001', supplierId: 's-1', status: 'ORDERED',
     supplier: { name: 'CV Multi Tekstil' },
-    items: [{ id: 'poi-1', rawMaterialId: 'rm-1', quantity: 100, unitPrice: 85000, receivedQty: 0 }]
+    items: [{ id: 'poi-1', purchaseOrderId: 'po-1', rawMaterialId: 'rm-1', quantity: 100, unitPrice: 85000, receivedQty: 0, rawMaterial: { id: 'rm-1', name: 'Kain Dryfit' } }]
   }]
 });
 // purchaseOrderItem.update dicari berdasarkan id; seed agar menunjuk objek yang sama dengan item PO.
@@ -67,6 +73,8 @@ describe('purchaseController.createOrder', () => {
   });
 });
 
+const saldo = (code) => Number(prisma.account.rows.find((a) => a.code === code).balance);
+
 describe('purchaseController.receiveOrder', () => {
   test('menambah stok bahan, mencatat mutasi, dan menandai PO diterima', async () => {
     const stokAwal = Number(prisma.rawMaterial.rows[0].currentStock);
@@ -100,5 +108,93 @@ describe('purchaseController.receiveOrder', () => {
       body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 0 }] }
     });
     assert.equal(Number(prisma.rawMaterial.rows[0].currentStock), stokAwal);
+  });
+});
+
+describe('penerimaan barang: status, batas, dan jurnal', () => {
+  // Tiap pengujian butuh PO sendiri: kalau id-nya sama, findUnique mengambil
+  // PO milik pengujian sebelumnya dan hasilnya membingungkan.
+  let urutan = 0;
+  const buatPO = () => {
+    const id = `po-x${++urutan}`;
+    const item = {
+      id: `poi-${id}`, purchaseOrderId: id, rawMaterialId: 'rm-1',
+      quantity: 100, unitPrice: 85000, receivedQty: 0,
+      rawMaterial: prisma.rawMaterial.rows[0] // seperti hasil include di controller
+    };
+    const po = {
+      id, poNumber: `PO-0000${urutan}`, supplierId: 's-1', status: 'ORDERED',
+      supplier: { name: 'CV Multi Tekstil' }, items: [item]
+    };
+    prisma.purchaseOrder.rows.push(po);
+    prisma.purchaseOrderItem.rows.push(item);
+    return { po, item };
+  };
+
+  test('terima sebagian membuat PO tetap terbuka, bukan langsung selesai', async () => {
+    const { po, item } = buatPO();
+    const res = await call(purchaseController.receiveOrder, {
+      params: { id: po.id },
+      body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 40 }] }
+    });
+
+    assert.equal(res.code, 200);
+    assert.equal(po.status, 'PARTIAL', 'PO belum boleh ditandai selesai');
+    assert.equal(Number(item.receivedQty), 40);
+  });
+
+  test('sisa kiriman menutup PO menjadi diterima penuh', async () => {
+    const { po } = buatPO();
+    await call(purchaseController.receiveOrder, { params: { id: po.id }, body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 60 }] } });
+    await call(purchaseController.receiveOrder, { params: { id: po.id }, body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 40 }] } });
+    assert.equal(po.status, 'RECEIVED');
+  });
+
+  test('menolak jumlah melebihi sisa pesanan, tanpa mengubah stok', async () => {
+    const { po } = buatPO();
+    const stokAwal = Number(prisma.rawMaterial.rows[0].currentStock);
+    const res = await call(purchaseController.receiveOrder, {
+      params: { id: po.id },
+      body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 500 }] }
+    });
+
+    assert.equal(res.code, 400);
+    assert.match(res.body.error, /melebihi sisa pesanan/);
+    assert.equal(Number(prisma.rawMaterial.rows[0].currentStock), stokAwal);
+  });
+
+  test('PO yang sudah diterima penuh tidak bisa diterima lagi', async () => {
+    const { po } = buatPO();
+    await call(purchaseController.receiveOrder, { params: { id: po.id }, body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 100 }] } });
+    const lagi = await call(purchaseController.receiveOrder, { params: { id: po.id }, body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 1 }] } });
+    assert.equal(lagi.code, 400);
+  });
+
+  test('barang di luar PO ditolak', async () => {
+    const { po } = buatPO();
+    const res = await call(purchaseController.receiveOrder, {
+      params: { id: po.id },
+      body: { items: [{ rawMaterialId: 'rm-asing', receivedQty: 5 }] }
+    });
+    assert.equal(res.code, 400);
+    assert.match(res.body.error, /bukan bagian dari PO/);
+  });
+
+  test('menambah persediaan dan hutang supplier sebesar nilai yang diterima', async () => {
+    const { po } = buatPO();
+    const bahanAwal = saldo('1201');
+    const hutangAwal = saldo('2001');
+
+    await call(purchaseController.receiveOrder, { params: { id: po.id }, body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 10 }] } });
+
+    const nilai = 10 * 85000;
+    assert.equal(saldo('1201'), bahanAwal + nilai, 'persediaan bahan bertambah');
+    assert.equal(saldo('2001'), hutangAwal + nilai, 'hutang ke supplier bertambah');
+  });
+
+  test('tanpa jumlah terisi ditolak', async () => {
+    const { po } = buatPO();
+    assert.equal((await call(purchaseController.receiveOrder, { params: { id: po.id }, body: { items: [] } })).code, 400);
+    assert.equal((await call(purchaseController.receiveOrder, { params: { id: po.id }, body: { items: [{ rawMaterialId: 'rm-1', receivedQty: 0 }] } })).code, 400);
   });
 });

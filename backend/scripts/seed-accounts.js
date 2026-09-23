@@ -10,6 +10,7 @@ const AKUN_WAJIB = [
   { code: '1101', name: 'Piutang Usaha Pelanggan', type: 'ASSET' },
   { code: '1201', name: 'Persediaan Bahan Baku', type: 'ASSET' },
   { code: '1202', name: 'Persediaan Barang Jadi', type: 'ASSET' },
+  { code: '2001', name: 'Hutang Usaha Supplier', type: 'LIABILITY' },
   { code: '4001', name: 'Pendapatan Penjualan Konveksi', type: 'REVENUE' },
   { code: '5001', name: 'HPP Produksi Konveksi', type: 'COGS' },
   {
