@@ -39,6 +39,18 @@ export const banner: Variants = {
   keluar: { opacity: 0, y: -10, transition: { duration: 0.15 } }
 };
 
+/** Kartu utama halaman masuk: naik sedikit sambil menajam. */
+export const panelLogin: Variants = {
+  awal: { opacity: 0, y: 18, scale: 0.98 },
+  masuk: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.38, ease: [0.16, 1, 0.3, 1] } }
+};
+
+/** Gerak sangat lambat untuk bentuk latar; hanya memberi kesan hidup. */
+export const hanyutLatar = (jarak = 14, detik = 16) => ({
+  animate: { y: [0, -jarak, 0] },
+  transition: { duration: detik, repeat: Infinity, ease: "easeInOut" as const }
+});
+
 /** Wadah kartu ringkasan: anaknya muncul berurutan, bukan serentak. */
 export const wadahBerurutan: Variants = {
   awal: {},
