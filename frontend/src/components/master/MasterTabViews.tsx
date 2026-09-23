@@ -7,7 +7,7 @@ import ContactsTable from "@/components/master/ContactsTable";
 import EmployeesTable from "@/components/master/EmployeesTable";
 import UnitsTable from "@/components/master/UnitsTable";
 import SalesTypesTable from "@/components/master/SalesTypesTable";
-import type { MasterEntity, EditableEntity } from "@/components/master/masterEntities";
+import type { MasterEntity } from "@/components/master/masterEntities";
 
 interface MasterTabViewsProps {
   activeTab: MasterEntity;
@@ -15,9 +15,8 @@ interface MasterTabViewsProps {
   rows: any[];
   /** Berubah saat filter berubah, supaya paginasi kembali ke halaman 1. */
   resetKey: string;
+  /** Ubah dan hapus tidak lagi di baris; keduanya ada di panel Proses. */
   onProses: (item: any) => void;
-  onEdit: (entity: EditableEntity, item: any) => void;
-  onDelete: (entity: MasterEntity, id: string, name: string) => void;
 }
 
 /** Menampilkan tabel/grid sesuai tab aktif; tiap baris punya tombol Proses. */
@@ -25,9 +24,7 @@ export default function MasterTabViews({
   activeTab,
   rows,
   resetKey,
-  onProses,
-  onEdit,
-  onDelete
+  onProses
 }: MasterTabViewsProps) {
   switch (activeTab) {
     case "materials":
@@ -37,15 +34,9 @@ export default function MasterTabViews({
     case "boms":
       return <BomCardsGrid boms={rows} onProses={onProses} />;
     case "contacts":
-      // Kontak dikelola lewat halaman Customer/Supplier, yang memakai tabel ini
-      // dengan aksi ubah & hapus langsung di baris.
-      return (
-        <ContactsTable
-          contacts={rows}
-          onEdit={(item) => onEdit("contacts", item)}
-          onDelete={(id, name) => onDelete("contacts", id, name)}
-        />
-      );
+      // Kontak tidak muncul sebagai menu Master; dikelola lewat halaman
+      // Customer dan Supplier yang memakai tabel yang sama.
+      return <ContactsTable contacts={rows} onProses={onProses} resetKey={resetKey} />;
     case "units":
       return <UnitsTable units={rows} onProses={onProses} resetKey={resetKey} />;
     case "salesTypes":

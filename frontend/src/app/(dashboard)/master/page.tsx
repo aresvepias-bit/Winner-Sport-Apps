@@ -168,8 +168,6 @@ export default function MasterDataPage() {
                     rows={rowsTersaring}
                     resetKey={`${activeTab}|${filter.cari}|${filter.status}|${filter.kategori}`}
                     onProses={setRowDiproses}
-                    onEdit={(entity, item) => setModal({ kind: "edit", entity, item })}
-                    onDelete={handleHapus}
                   />
                 </>
               )}

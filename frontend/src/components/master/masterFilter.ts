@@ -62,13 +62,26 @@ const STATUS_STOK: OpsiStatus = {
   }
 };
 
+/** Rekanan tidak punya status aktif; yang membedakan adalah cara bayarnya. */
+const STATUS_TERMIN: OpsiStatus = {
+  label: "Cara bayar",
+  opsi: [
+    { value: "SEMUA", label: "Semua cara bayar" },
+    { value: "TUNAI", label: "Tunai (bayar langsung)" },
+    { value: "TEMPO", label: "Tempo (ada jatuh tempo)" }
+  ],
+  cocok: (row, value) =>
+    value === "TUNAI" ? Number(row.paymentTerm) <= 0 : Number(row.paymentTerm) > 0
+};
+
 /** Tab tanpa entri di sini tidak menampilkan dropdown status. */
 const STATUS: Partial<Record<MasterEntity, OpsiStatus>> = {
   materials: STATUS_STOK,
   products: STATUS_STOK,
   employees: STATUS_AKTIF,
   units: STATUS_AKTIF,
-  salesTypes: STATUS_AKTIF
+  salesTypes: STATUS_AKTIF,
+  contacts: STATUS_TERMIN
 };
 
 /** Pengelompokan kedua, isinya diambil dari data yang sedang dimuat. */

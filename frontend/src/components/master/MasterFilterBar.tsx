@@ -30,9 +30,9 @@ export default function MasterFilterBar({ entity, rows, nilai, onChange, jumlahT
   const daftarKategori = opsiKategori(entity, rows);
   const ubah = (bagian: Partial<MasterFilterState>) => onChange({ ...nilai, ...bagian });
 
-  // Dropdown kategori disembunyikan kalau datanya memang tidak berkategori,
-  // supaya tidak ada pilihan kosong yang membingungkan.
-  const tampilKategori = kategori && daftarKategori.length > 0;
+  // Dropdown kategori disembunyikan kalau datanya tidak berkategori, atau kalau
+  // semua baris berkategori sama — pilihan tunggal tidak menyaring apa pun.
+  const tampilKategori = kategori && daftarKategori.length > 1;
   const kolom = 1 + (status ? 1 : 0) + (tampilKategori ? 1 : 0);
 
   return (
