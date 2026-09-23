@@ -1,4 +1,5 @@
 const prisma = require('../api/db');
+const { postJournal, AKUN } = require('../api/journal');
 
 /**
  * Controller: Manufaktur & Surat Perintah Kerja (SPK) Konveksi
@@ -235,8 +236,13 @@ const productionController = {
       const totalProductionCost = matCost + sewCost + labCost + ovhCost;
       const hppPerPcs = totalProductionCost / cQty;
 
+      // Semua perubahan (stok, mutasi, SPK, jurnal) dijalankan sekaligus.
+      // Kalau jurnalnya gagal, stok pun tidak jadi bertambah — tidak ada keadaan separuh jadi.
       const newProductStock = Number(workOrder.product.currentStock) + cQty;
-      await prisma.product.update({
+      const biayaKonversi = sewCost + labCost + ovhCost;
+
+      const completedWO = await prisma.$transaction(async (tx) => {
+      await tx.product.update({
         where: { id: workOrder.productId },
         data: {
           currentStock: newProductStock,
@@ -244,7 +250,7 @@ const productionController = {
         }
       });
 
-      await prisma.stockMovement.create({
+      await tx.stockMovement.create({
         data: {
           itemType: 'PRODUCT',
           productId: workOrder.productId,
@@ -258,7 +264,7 @@ const productionController = {
       });
 
       if (sQty > 0) {
-        await prisma.stockMovement.create({
+        await tx.stockMovement.create({
           data: {
             itemType: 'PRODUCT',
             productId: workOrder.productId,
@@ -272,7 +278,7 @@ const productionController = {
         });
       }
 
-      const completedWO = await prisma.workOrder.update({
+      const wo = await tx.workOrder.update({
         where: { id },
         data: {
           completedQty: cQty,
@@ -286,6 +292,25 @@ const productionController = {
           completedDate: new Date()
         },
         include: { product: true }
+      });
+
+      // Jurnal produksi: biaya bahan & biaya konversi berubah jadi nilai barang jadi.
+      // Biaya konversi (jahit, upah, overhead) dikreditkan ke akun penampung
+      // "Biaya Produksi Dibebankan", yang nanti meniadakan beban upah saat
+      // pembayarannya dicatat di menu Pengeluaran — supaya tidak terhitung dua kali.
+      await postJournal(tx, {
+        date: new Date(),
+        description: `Hasil produksi ${workOrder.woNumber}`,
+        referenceType: 'WO',
+        referenceId: workOrder.woNumber,
+        lines: [
+          { code: AKUN.PERSEDIAAN_JADI, debit: totalProductionCost },
+          { code: AKUN.PERSEDIAAN_BAHAN, credit: matCost },
+          { code: AKUN.BIAYA_PRODUKSI_DIBEBANKAN, credit: biayaKonversi }
+        ]
+      });
+
+      return wo;
       });
 
       res.json({

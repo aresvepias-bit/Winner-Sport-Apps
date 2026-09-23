@@ -293,6 +293,43 @@ Lalu isi master tipe: `cd backend && node scripts/seed-sales-types.js` (aman diu
 
 ---
 
+## 💰 HPP & Jurnal (COGS)
+
+### HPP direkam saat transaksi
+`SalesOrderItem.hppPerPcs` dan `hppTotal` diisi **saat order dibuat**, diambil dari `Product.standardCost` pada saat itu. Sebelumnya HPP dihitung ulang tiap laporan dibuka, sehingga mengubah HPP acuan produk hari ini **ikut mengubah laba bulan-bulan lalu**. Sekarang tidak lagi.
+
+- Laporan Laba Rugi membaca `hppTotal`, bukan master.
+- Pesanan custom tanpa produk master tetap 0 (tidak ditebak). Lihat `coverage` di respons untuk tahu berapa baris yang HPP-nya sudah terekam.
+- Order lama sudah diisi mundur lewat `scripts/backfill-hpp.js` memakai HPP acuan saat itu — **perkiraan**, bukan biaya asli tanggal transaksi. Jalankan tanpa argumen untuk pratinjau, tambahkan `--tulis` untuk menyimpan.
+
+### Jurnal otomatis
+`api/journal.js` menulis jurnal ganda dan memperbarui saldo akun. Jurnal yang tidak seimbang **ditolak**, bukan disimpan diam-diam. Saldo bergerak sesuai sifat akun (aset/beban/HPP naik di debit; kewajiban/modal/pendapatan naik di kredit).
+
+**Saat penjualan** (`SO`):
+```
+Dr Piutang Usaha          sebesar tagihan
+  Cr Pendapatan Penjualan
+Dr HPP Produksi           sebesar HPP terekam
+  Cr Persediaan Barang Jadi
+```
+
+**Saat SPK selesai** (`WO`):
+```
+Dr Persediaan Barang Jadi   total biaya produksi
+  Cr Persediaan Bahan Baku    biaya bahan
+  Cr Biaya Produksi Dibebankan  jahit + upah + overhead
+```
+
+Akun **5101 Biaya Produksi Dibebankan** adalah penampung: biaya jahit sudah masuk nilai persediaan, dan saat pembayarannya dicatat di menu Pengeluaran, keduanya saling meniadakan sehingga **tidak terhitung dua kali**. Jalankan `node scripts/seed-accounts.js` bila akun ini belum ada.
+
+### Yang perlu diperhatikan
+- **Pembuatan order dan penyelesaian SPK kini satu transaksi penuh** (order + jurnal + stok). Kalau jurnal gagal, semuanya dibatalkan — tidak ada lagi order tersimpan tapi jurnalnya tidak.
+- **Akun wajib ada.** Tanpa bagan akun, penjualan akan gagal dengan pesan jelas. Ini disengaja: lebih baik gagal terang-terangan daripada pembukuan diam-diam rusak.
+- **Buku besar dimulai dari sekarang.** Transaksi sebelum fitur ini tidak dijurnal mundur, jadi saldo akun hanya mencerminkan transaksi baru, sementara Laba Rugi tetap menghitung seluruh riwayat. Keduanya memang beda cakupan.
+- Pembayaran pelanggan dan pengeluaran kas belum dijurnal; keduanya masih memperbarui saldo rekening secara langsung seperti sebelumnya.
+
+---
+
 ## 📊 Dashboard & Grafik
 
 - **Semua angka dashboard dihitung dari transaksi nyata.** Sebelumnya `trendData` mengarang 5 dari 6 bulan (`monthSales * (0.8 + sin(i)*0.2)`); kini dikelompokkan per bulan dari `salesOrder` + `expense`.

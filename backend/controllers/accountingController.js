@@ -131,12 +131,18 @@ const accountingController = {
 
       const totalRevenue = salesOrders.reduce((acc, curr) => acc + Number(curr.totalAmount), 0);
 
+      // HPP dibaca dari yang DIREKAM saat order dibuat. Mengubah HPP acuan produk
+      // hari ini tidak boleh mengubah laba bulan-bulan yang sudah lewat.
+      // Baris lama (sebelum fitur ini) bernilai 0; `coverage` memberi tahu porsinya.
       let totalHpp = 0;
+      let itemsTotal = 0;
+      let itemsWithHpp = 0;
       for (const order of salesOrders) {
         for (const item of order.items) {
-          const qtyPcs = await toPcs(item.quantity, item.unitName);
-          const itemStandardCost = item.product ? Number(item.product.standardCost) : 0;
-          totalHpp += (qtyPcs * itemStandardCost);
+          itemsTotal += 1;
+          const hpp = Number(item.hppTotal) || 0;
+          if (hpp > 0) itemsWithHpp += 1;
+          totalHpp += hpp;
         }
       }
 
@@ -161,6 +167,8 @@ const accountingController = {
       res.json({
         totalRevenue,
         totalHpp,
+        // Berapa banyak baris penjualan yang HPP-nya sudah terekam.
+        coverage: { itemsTotal, itemsWithHpp },
         grossProfit,
         grossProfitMargin: Number(grossProfitMargin.toFixed(2)),
         totalExpenses,

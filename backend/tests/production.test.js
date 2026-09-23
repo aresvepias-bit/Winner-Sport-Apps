@@ -9,6 +9,17 @@ const bahan = { id: 'rm-1', name: 'Kain Dryfit', currentStock: 500, standardCost
 const woMaterial = { id: 'wom-1', workOrderId: 'wo-1', rawMaterialId: 'rm-1', actualIssuedQty: 0, unitCost: 0, subtotal: 0, rawMaterial: bahan };
 
 const prisma = installStub({
+  // Penjualan & penyelesaian SPK kini selalu menulis jurnal, jadi bagan akun
+  // harus ada. Tanpa ini prosesnya memang sengaja gagal, bukan diam-diam dilewati.
+  account: [
+    { id: 'a-kas', code: '1001', name: 'Kas', type: 'ASSET', balance: 0 },
+    { id: 'a-piutang', code: '1101', name: 'Piutang', type: 'ASSET', balance: 0 },
+    { id: 'a-bahan', code: '1201', name: 'Persediaan Bahan', type: 'ASSET', balance: 0 },
+    { id: 'a-jadi', code: '1202', name: 'Persediaan Jadi', type: 'ASSET', balance: 0 },
+    { id: 'a-pendapatan', code: '4001', name: 'Pendapatan', type: 'REVENUE', balance: 0 },
+    { id: 'a-hpp', code: '5001', name: 'HPP', type: 'COGS', balance: 0 },
+    { id: 'a-dibebankan', code: '5101', name: 'Biaya Produksi Dibebankan', type: 'EXPENSE', balance: 0 }
+  ],
   product: [produk],
   rawMaterial: [bahan],
   bom: [{

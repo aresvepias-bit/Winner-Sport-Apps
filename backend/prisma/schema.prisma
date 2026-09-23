@@ -484,6 +484,12 @@ model SalesOrderItem {
   pricePerUnit      Decimal  @db.Decimal(15, 2)
   subtotal          Decimal  @db.Decimal(15, 2)
 
+  /// HPP direkam saat order dibuat, bukan dibaca ulang dari master.
+  /// Kalau dibaca ulang, mengubah HPP acuan produk hari ini akan ikut mengubah
+  /// laba bulan-bulan lalu — padahal biaya saat transaksi itu sudah tetap.
+  hppPerPcs         Decimal  @default(0) @db.Decimal(15, 2)
+  hppTotal          Decimal  @default(0) @db.Decimal(15, 2)
+
   salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
   product    Product?   @relation(fields: [productId], references: [id])
 

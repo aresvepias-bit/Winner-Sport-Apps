@@ -1,5 +1,6 @@
 const prisma = require('../api/db');
 const { toPcs } = require('../api/unitConversion');
+const { postJournal, AKUN } = require('../api/journal');
 
 /**
  * Controller: Penjualan & Distribusi Pakaian (Kodi, Grosir, Custom)
@@ -66,91 +67,126 @@ const salesController = {
       const invNumber = `INV-${Date.now().toString().slice(-6)}`;
 
       let subtotal = 0;
+      let totalHpp = 0;
 
-      const itemsData = items.map(item => {
+      // HPP diambil dari master SEKARANG lalu disimpan pada barisnya. Kalau nanti
+      // HPP acuan produk diubah, laba order ini tidak ikut berubah.
+      const produkTerpakai = await prisma.product.findMany({
+        where: { id: { in: items.map((i) => i.productId).filter(Boolean) } },
+        select: { id: true, standardCost: true }
+      });
+      const hppPerProduk = new Map(produkTerpakai.map((p) => [p.id, Number(p.standardCost)]));
+
+      const itemsData = [];
+      for (const item of items) {
         const qty = parseInt(item.quantity);
         const price = Number(item.pricePerUnit);
         const lineSubtotal = qty * price;
         subtotal += lineSubtotal;
 
-        return {
+        const unitName = item.unitName || 'pcs';
+        const pcs = await toPcs(qty, unitName);
+        // Pesanan custom tanpa produk master memang tidak punya HPP acuan; dicatat 0
+        // apa adanya, bukan ditebak. Lihat `coverage` di laporan untuk tahu porsinya.
+        const hppPerPcs = item.productId ? hppPerProduk.get(item.productId) || 0 : 0;
+        const hppTotal = Math.round(pcs * hppPerPcs * 100) / 100;
+        totalHpp += hppTotal;
+
+        itemsData.push({
           productId: item.productId || null,
           customDescription: item.customDescription || null,
           quantity: qty,
-          unitName: item.unitName || 'pcs',
+          unitName,
           pricePerUnit: price,
-          subtotal: lineSubtotal
-        };
-      });
+          subtotal: lineSubtotal,
+          hppPerPcs,
+          hppTotal
+        });
+      }
 
       const disc = Number(discount) || 0;
-      const tx = Number(tax) || 0;
-      const totalAmount = subtotal - disc + tx;
+      const tx2 = Number(tax) || 0;
+      const totalAmount = subtotal - disc + tx2;
 
-      const salesOrder = await prisma.salesOrder.create({
-        data: {
-          soNumber,
-          customerId,
-          orderType: orderType || 'SATUAN',
-          dueDate: dueDate ? new Date(dueDate) : null,
-          status: 'CONFIRMED',
-          paymentStatus: 'UNPAID',
-          subtotal,
-          discount: disc,
-          tax: tx,
-          totalAmount,
-          paidAmount: 0,
-          notes,
-          createdById: req.user.id,
-          items: { create: itemsData },
-          invoices: {
-            create: {
-              invoiceNumber: invNumber,
-              customerId,
-              dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-              totalAmount,
-              paidAmount: 0,
-              status: 'UNPAID',
-              notes: `Faktur untuk ${soNumber}`
-            }
-          }
-        },
-        include: {
-          customer: true,
-          items: { include: { product: true } },
-          invoices: true
-        }
-      });
-
-      // Kurangi stok jika produk terdaftar di master
-      for (const item of items) {
-        if (item.productId) {
-          // Rasio satuan diambil dari master Satuan (kodi 20, lusin 12, dst).
-          const totalPcsDeducted = Math.round(await toPcs(item.quantity, item.unitName));
-
-          const prod = await prisma.product.findUnique({ where: { id: item.productId } });
-          if (prod) {
-            const newStock = Math.max(0, Number(prod.currentStock) - totalPcsDeducted);
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: { currentStock: newStock }
-            });
-
-            await prisma.stockMovement.create({
-              data: {
-                itemType: 'PRODUCT',
-                productId: item.productId,
-                type: 'SALES_ISSUE',
-                quantity: -totalPcsDeducted,
-                balanceAfter: newStock,
-                referenceType: 'SO',
-                referenceId: soNumber,
-                notes: `Penjualan ${soNumber} (${item.quantity} ${item.unitName || 'pcs'})`
+      // Order, jurnal, dan pengurangan stok dijalankan sebagai satu kesatuan.
+      // Kalau salah satu gagal, semuanya dibatalkan — jangan sampai order tersimpan
+      // tetapi jurnalnya tidak, atau stok berkurang tanpa ada ordernya.
+      const salesOrder = await prisma.$transaction(async (tx) => {
+        const order = await tx.salesOrder.create({
+          data: {
+            soNumber,
+            customerId,
+            orderType: orderType || 'SATUAN',
+            dueDate: dueDate ? new Date(dueDate) : null,
+            status: 'CONFIRMED',
+            paymentStatus: 'UNPAID',
+            subtotal,
+            discount: disc,
+            tax: tx2,
+            totalAmount,
+            paidAmount: 0,
+            notes,
+            createdById: req.user.id,
+            items: { create: itemsData },
+            invoices: {
+              create: {
+                invoiceNumber: invNumber,
+                customerId,
+                dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+                totalAmount,
+                paidAmount: 0,
+                status: 'UNPAID',
+                notes: `Faktur untuk ${soNumber}`
               }
-            });
+            }
+          },
+          include: {
+            customer: true,
+            items: { include: { product: true } },
+            invoices: true
           }
+        });
+
+        // Jurnal penjualan: pengakuan pendapatan sekaligus pembebanan HPP.
+        // Dicatat saat faktur terbit (basis akrual), bukan saat uang diterima.
+        await postJournal(tx, {
+          date: order.createdAt,
+          description: `Penjualan ${soNumber}`,
+          referenceType: 'SO',
+          referenceId: soNumber,
+          lines: [
+            { code: AKUN.PIUTANG, debit: totalAmount },
+            { code: AKUN.PENDAPATAN, credit: totalAmount },
+            { code: AKUN.HPP, debit: totalHpp },
+            { code: AKUN.PERSEDIAAN_JADI, credit: totalHpp }
+          ]
+        });
+
+        // Kurangi stok untuk item yang produknya terdaftar di master.
+        for (const item of itemsData) {
+          if (!item.productId) continue;
+          const pcs = Math.round(await toPcs(item.quantity, item.unitName));
+          const prod = await tx.product.findUnique({ where: { id: item.productId } });
+          if (!prod) continue;
+
+          const newStock = Math.max(0, Number(prod.currentStock) - pcs);
+          await tx.product.update({ where: { id: item.productId }, data: { currentStock: newStock } });
+          await tx.stockMovement.create({
+            data: {
+              itemType: 'PRODUCT',
+              productId: item.productId,
+              type: 'SALES_ISSUE',
+              quantity: -pcs,
+              balanceAfter: newStock,
+              referenceType: 'SO',
+              referenceId: soNumber,
+              notes: `Penjualan ${soNumber} (${item.quantity} ${item.unitName})`
+            }
+          });
         }
-      }
+
+        return order;
+      });
 
       res.status(201).json(salesOrder);
     } catch (err) {

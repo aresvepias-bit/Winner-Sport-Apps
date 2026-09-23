@@ -6,7 +6,13 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'secret-untuk-test-' + 'x'.re
 
 const prisma = installStub({
   contact: [{ id: 'c-1', name: 'FC Juara Futsal', type: 'CUSTOMER' }],
-  account: [{ id: 'acc-kas', name: 'Kas Utama Tunai', balance: 1000000 }],
+  account: [
+    { id: 'acc-kas', code: '1001', name: 'Kas Utama Tunai', type: 'ASSET', balance: 1000000 },
+    { id: 'a-piutang', code: '1101', name: 'Piutang', type: 'ASSET', balance: 0 },
+    { id: 'a-jadi', code: '1202', name: 'Persediaan Jadi', type: 'ASSET', balance: 0 },
+    { id: 'a-pendapatan', code: '4001', name: 'Pendapatan', type: 'REVENUE', balance: 0 },
+    { id: 'a-hpp', code: '5001', name: 'HPP', type: 'COGS', balance: 0 }
+  ],
   invoice: [
     { id: 'inv-1', invoiceNumber: 'INV-1', salesOrderId: 'so-1', totalAmount: 1000000, paidAmount: 0, status: 'UNPAID' },
     { id: 'inv-2', invoiceNumber: 'INV-2', salesOrderId: 'so-2', totalAmount: 500000, paidAmount: 0, status: 'UNPAID' }
