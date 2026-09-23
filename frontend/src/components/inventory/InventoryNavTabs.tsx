@@ -14,14 +14,15 @@ export const INVENTORY_MENUS = [
 ] satisfies Array<{ key: InventoryTabType; label: string; description: string; keywords: string; group: string; icon: typeof Package }>;
 
 interface InventoryNavTabsProps {
-  activeTab: InventoryTabType;
+  /** null = belum ada menu yang dipilih, jadi belum ada data yang diambil. */
+  activeTab: InventoryTabType | null;
   onTabChange: (tab: InventoryTabType) => void;
 }
 
 export default function InventoryNavTabs({ activeTab, onTabChange }: InventoryNavTabsProps) {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(false);
-  const activeMenu = INVENTORY_MENUS.find((menu) => menu.key === activeTab)!;
+  const activeMenu = INVENTORY_MENUS.find((menu) => menu.key === activeTab);
   const query = search.trim().toLocaleLowerCase("id");
   const filtered = INVENTORY_MENUS.filter((menu) => `${menu.label} ${menu.description} ${menu.keywords} ${menu.group}`.toLocaleLowerCase("id").includes(query));
 
@@ -34,7 +35,7 @@ export default function InventoryNavTabs({ activeTab, onTabChange }: InventoryNa
       </div>
       <button type="button" aria-expanded={expanded} aria-controls="inventory-menu-list" onClick={() => setExpanded(!expanded)} className="flex w-full items-center gap-3 p-4 text-left focus-visible:outline-2 focus-visible:outline-red-500 xl:hidden">
         <Settings2 className="h-5 w-5 text-red-600 dark:text-red-400" />
-        <span className="flex-1"><span className="block text-xs text-slate-500 dark:text-slate-400">Pilih menu gudang</span><span className="text-sm font-bold">{activeMenu.label}</span></span>
+        <span className="flex-1"><span className="block text-xs text-slate-500 dark:text-slate-400">Pilih menu gudang</span><span className="text-sm font-bold">{activeMenu ? activeMenu.label : "Belum dipilih"}</span></span>
         <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
       <div id="inventory-menu-list" className={`${expanded ? "block" : "hidden"} xl:block`}>
