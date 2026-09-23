@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil, Trash2, Search } from "lucide-react";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/common/Pagination";
 
@@ -16,18 +14,12 @@ export interface SalesTypeItem {
 
 interface SalesTypesTableProps {
   salesTypes: SalesTypeItem[];
-  onEdit: (item: SalesTypeItem) => void;
-  onDelete: (id: string, name: string) => void;
+  onProses?: (item: SalesTypeItem) => void;
+  resetKey?: string;
 }
 
-export default function SalesTypesTable({ salesTypes, onEdit, onDelete }: SalesTypesTableProps) {
-  const [search, setSearch] = useState("");
-
-  const filtered = (salesTypes || []).filter((t) => {
-    const q = search.toLowerCase();
-    return t.name?.toLowerCase().includes(q) || t.code?.toLowerCase().includes(q);
-  });
-  const pg = usePagination(filtered, 10, search);
+export default function SalesTypesTable({ salesTypes, onProses, resetKey = "" }: SalesTypesTableProps) {
+  const pg = usePagination(salesTypes, 10, resetKey);
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
@@ -37,15 +29,6 @@ export default function SalesTypesTable({ salesTypes, onEdit, onDelete }: SalesT
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Pilihan yang muncul di form Order Penjualan. Kode tidak bisa diubah karena sudah tersimpan di order lama
           </p>
-        </div>
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari tipe..."
-            className="pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-slate-900 dark:text-slate-100 text-xs font-medium focus:outline-none focus:border-red-500 w-full sm:w-52"
-          />
         </div>
       </div>
 
@@ -62,7 +45,7 @@ export default function SalesTypesTable({ salesTypes, onEdit, onDelete }: SalesT
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
-            {filtered.length > 0 ? (
+            {salesTypes.length > 0 ? (
               pg.pageItems.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3.5 text-slate-400 tabular-nums">{t.sortOrder ?? 0}</td>
@@ -81,29 +64,20 @@ export default function SalesTypesTable({ salesTypes, onEdit, onDelete }: SalesT
                     )}
                   </td>
                   <td className="py-3.5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => onEdit(t)}
-                        title="Ubah tipe penjualan"
-                        className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 border border-blue-200 dark:border-blue-500/20 cursor-pointer transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(t.id, t.name)}
-                        title="Hapus tipe penjualan"
-                        className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 border border-rose-200 dark:border-rose-500/20 cursor-pointer transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onProses?.(t)}
+                      title="Proses data"
+                      className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-sm shadow-red-600/20 transition-colors cursor-pointer"
+                    >
+                      Proses
+                    </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
                 <td colSpan={6} className="py-6 text-center text-slate-400">
-                  {search ? "Tipe penjualan tidak ditemukan." : "Belum ada tipe penjualan."}
+                  Tidak ada tipe penjualan yang cocok dengan filter.
                 </td>
               </tr>
             )}

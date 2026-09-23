@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Edit, Trash2 } from "lucide-react";
 import { formatRupiah, formatNumber } from "@/lib/utils";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/common/Pagination";
@@ -21,36 +19,19 @@ interface Product {
 
 interface ProductsTableProps {
   products: Product[];
-  onEdit?: (product: Product) => void;
-  onDelete?: (id: string, name: string) => void;
+  onProses?: (product: Product) => void;
+  resetKey?: string;
 }
 
-export default function ProductsTable({ products, onEdit, onDelete }: ProductsTableProps) {
-  const [search, setSearch] = useState("");
-
-  const filteredProducts = products.filter((p) => {
-    const q = search.toLowerCase();
-    return p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);
-  });
-
-  const pg = usePagination(filteredProducts, 10, search);
+export default function ProductsTable({ products, onProses, resetKey = "" }: ProductsTableProps) {
+  const pg = usePagination(products, 10, resetKey);
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Katalog Produk Pakaian Jadi</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Daftar produk jadi, struktur harga eceran, grosir &amp; kodian ({filteredProducts.length} model)</p>
-        </div>
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari SKU atau model baju..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 w-64"
-          />
+          <p className="text-xs text-slate-500 dark:text-slate-400">Daftar produk jadi, struktur harga eceran, grosir &amp; kodian ({products.length} model)</p>
         </div>
       </div>
 
@@ -69,7 +50,7 @@ export default function ProductsTable({ products, onEdit, onDelete }: ProductsTa
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
-            {filteredProducts.length > 0 ? (
+            {products.length > 0 ? (
               pg.pageItems.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="py-3 font-mono font-bold text-red-600 dark:text-red-400">{p.sku}</td>
@@ -83,22 +64,13 @@ export default function ProductsTable({ products, onEdit, onDelete }: ProductsTa
                   <td className="py-3 font-semibold text-purple-600 dark:text-purple-400">{formatRupiah(p.priceKodi)}</td>
                   <td className="py-3 font-bold text-slate-900 dark:text-white">{formatNumber(p.currentStock)} pcs</td>
                   <td className="py-3 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => onEdit?.(p)}
-                        title="Edit Produk"
-                        className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 transition-colors cursor-pointer"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDelete?.(p.id, p.name)}
-                        title="Hapus Produk"
-                        className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onProses?.(p)}
+                      title="Proses data"
+                      className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-sm shadow-red-600/20 transition-colors cursor-pointer"
+                    >
+                      Proses
+                    </button>
                   </td>
                 </tr>
               ))

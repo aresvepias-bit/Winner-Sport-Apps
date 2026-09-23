@@ -8,67 +8,49 @@ import EmployeesTable from "@/components/master/EmployeesTable";
 import UnitsTable from "@/components/master/UnitsTable";
 import SalesTypesTable from "@/components/master/SalesTypesTable";
 import type { MasterEntity, EditableEntity } from "@/components/master/masterEntities";
-import type { MasterData } from "@/components/master/useMasterData";
 
 interface MasterTabViewsProps {
   activeTab: MasterEntity;
-  data: MasterData;
+  /** Baris yang sudah disaring MasterFilterBar. */
+  rows: any[];
+  /** Berubah saat filter berubah, supaya paginasi kembali ke halaman 1. */
+  resetKey: string;
+  onProses: (item: any) => void;
   onEdit: (entity: EditableEntity, item: any) => void;
   onDelete: (entity: MasterEntity, id: string, name: string) => void;
 }
 
-/** Menampilkan tabel/grid sesuai tab aktif, lengkap dengan aksi edit & hapus. */
-export default function MasterTabViews({ activeTab, data, onEdit, onDelete }: MasterTabViewsProps) {
+/** Menampilkan tabel/grid sesuai tab aktif; tiap baris punya tombol Proses. */
+export default function MasterTabViews({
+  activeTab,
+  rows,
+  resetKey,
+  onProses,
+  onEdit,
+  onDelete
+}: MasterTabViewsProps) {
   switch (activeTab) {
     case "materials":
-      return (
-        <RawMaterialsTable
-          materials={data.materials}
-          onEdit={(item) => onEdit("materials", item)}
-          onDelete={(id, name) => onDelete("materials", id, name)}
-        />
-      );
+      return <RawMaterialsTable materials={rows} onProses={onProses} resetKey={resetKey} />;
     case "products":
-      return (
-        <ProductsTable
-          products={data.products}
-          onEdit={(item) => onEdit("products", item)}
-          onDelete={(id, name) => onDelete("products", id, name)}
-        />
-      );
+      return <ProductsTable products={rows} onProses={onProses} resetKey={resetKey} />;
     case "boms":
-      return <BomCardsGrid boms={data.boms} onDelete={(id, name) => onDelete("boms", id, name)} />;
+      return <BomCardsGrid boms={rows} onProses={onProses} />;
     case "contacts":
+      // Kontak dikelola lewat halaman Customer/Supplier, yang memakai tabel ini
+      // dengan aksi ubah & hapus langsung di baris.
       return (
         <ContactsTable
-          contacts={data.contacts}
+          contacts={rows}
           onEdit={(item) => onEdit("contacts", item)}
           onDelete={(id, name) => onDelete("contacts", id, name)}
         />
       );
     case "units":
-      return (
-        <UnitsTable
-          units={data.units}
-          onEdit={(item) => onEdit("units", item)}
-          onDelete={(id, name) => onDelete("units", id, name)}
-        />
-      );
+      return <UnitsTable units={rows} onProses={onProses} resetKey={resetKey} />;
     case "salesTypes":
-      return (
-        <SalesTypesTable
-          salesTypes={data.salesTypes}
-          onEdit={(item) => onEdit("salesTypes", item)}
-          onDelete={(id, name) => onDelete("salesTypes", id, name)}
-        />
-      );
+      return <SalesTypesTable salesTypes={rows} onProses={onProses} resetKey={resetKey} />;
     case "employees":
-      return (
-        <EmployeesTable
-          employees={data.employees}
-          onEdit={(item) => onEdit("employees", item)}
-          onDelete={(id, name) => onDelete("employees", id, name)}
-        />
-      );
+      return <EmployeesTable employees={rows} onProses={onProses} resetKey={resetKey} />;
   }
 }

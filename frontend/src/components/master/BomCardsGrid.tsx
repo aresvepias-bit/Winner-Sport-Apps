@@ -20,9 +20,10 @@ import { Trash2 } from "lucide-react";
 interface BomCardsGridProps {
   boms: BomItem[];
   onDelete?: (id: string, name: string) => void;
+  onProses?: (bom: BomItem) => void;
 }
 
-export default function BomCardsGrid({ boms, onDelete }: BomCardsGridProps) {
+export default function BomCardsGrid({ boms, onDelete, onProses }: BomCardsGridProps) {
   // If no dynamic BOMs loaded yet, display the default standard konveksi BOM formulas
   const hasDynamicBoms = boms && boms.length > 0;
 
@@ -48,14 +49,24 @@ export default function BomCardsGrid({ boms, onDelete }: BomCardsGridProps) {
                   <span className="px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 font-bold text-[10px]">
                     {bom.version || "v1.0"}
                   </span>
-                  {onDelete && (
+                  {onProses ? (
                     <button
-                      onClick={() => onDelete(bom.id, bom.name)}
-                      title="Hapus Formula BOM"
-                      className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      onClick={() => onProses(bom)}
+                      title="Proses formula BOM"
+                      className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      Proses
                     </button>
+                  ) : (
+                    onDelete && (
+                      <button
+                        onClick={() => onDelete(bom.id, bom.name)}
+                        title="Hapus Formula BOM"
+                        className="p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )
                   )}
                 </div>
               </div>

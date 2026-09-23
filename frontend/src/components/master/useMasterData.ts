@@ -14,8 +14,14 @@ export interface MasterData {
   salesTypes: any[];
 }
 
-/** Memuat data tab yang sedang aktif (tab lain dimuat saat dibuka). */
-export function useMasterData(activeTab: MasterEntity) {
+/**
+ * Memuat data tab yang sedang aktif.
+ *
+ * Selama belum ada menu yang dipilih (`activeTab` null) tidak ada permintaan
+ * yang dikirim: membuka halaman master tidak lagi otomatis menarik seluruh
+ * daftar bahan baku dari server.
+ */
+export function useMasterData(activeTab: MasterEntity | null) {
   const [data, setData] = useState<MasterData>({
     materials: [], products: [], boms: [], contacts: [], employees: [], units: [], salesTypes: []
   });
@@ -23,6 +29,7 @@ export function useMasterData(activeTab: MasterEntity) {
   const [loadError, setLoadError] = useState("");
 
   const load = useCallback(async () => {
+    if (!activeTab) return;
     setLoading(true);
     setLoadError("");
     try {

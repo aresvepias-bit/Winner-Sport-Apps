@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Edit, Trash2 } from "lucide-react";
 import { formatRupiah, formatNumber } from "@/lib/utils";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/common/Pagination";
@@ -20,82 +18,21 @@ interface RawMaterial {
 
 interface RawMaterialsTableProps {
   materials: RawMaterial[];
-  onEdit?: (material: RawMaterial) => void;
-  onDelete?: (id: string, name: string) => void;
+  onProses?: (material: RawMaterial) => void;
+  resetKey?: string;
 }
 
-export default function RawMaterialsTable({ materials, onEdit, onDelete }: RawMaterialsTableProps) {
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"ALL" | "LOW" | "SAFE">("ALL");
-
-  const filteredMaterials = materials.filter((m) => {
-    const q = search.toLowerCase();
-    const matchQuery = (
-      m.name?.toLowerCase().includes(q) ||
-      m.sku?.toLowerCase().includes(q) ||
-      m.category?.name?.toLowerCase().includes(q)
-    );
-    const isLow = Number(m.currentStock) <= Number(m.minimumStock);
-    if (!matchQuery) return false;
-    if (filterStatus === "LOW") return isLow;
-    if (filterStatus === "SAFE") return !isLow;
-    return true;
-  });
-
-  const pg = usePagination(filteredMaterials, 10, `${search}|${filterStatus}`);
+// Pencarian dan filter status kini dipegang MasterFilterBar di halaman, jadi
+// tabel ini cukup menampilkan baris yang sudah disaring.
+export default function RawMaterialsTable({ materials, onProses, resetKey = "" }: RawMaterialsTableProps) {
+  const pg = usePagination(materials, 10, resetKey);
 
   return (
     <div className="bg-white dark:bg-[#0d1424] border border-slate-200 dark:border-[#1a2236] rounded-2xl p-6 shadow-sm dark:shadow-xl transition-colors">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Daftar Bahan Baku Kain &amp; Aksesoris</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Katalog persediaan bahan mentah dan kain gulungan ({filteredMaterials.length} item)</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] p-1 rounded-xl text-[11px] font-semibold">
-            <button
-              onClick={() => setFilterStatus("ALL")}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                filterStatus === "ALL"
-                  ? "bg-white dark:bg-[#1a2236] text-slate-900 dark:text-white shadow-xs font-bold"
-                  : "text-slate-500 hover:text-slate-800 dark:hover:text-white"
-              }`}
-            >
-              Semua
-            </button>
-            <button
-              onClick={() => setFilterStatus("LOW")}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                filterStatus === "LOW"
-                  ? "bg-rose-500 text-white shadow-xs font-bold"
-                  : "text-rose-600 dark:text-rose-400 hover:text-rose-700"
-              }`}
-            >
-              Kritis
-            </button>
-            <button
-              onClick={() => setFilterStatus("SAFE")}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                filterStatus === "SAFE"
-                  ? "bg-emerald-600 text-white shadow-xs font-bold"
-                  : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
-              }`}
-            >
-              Aman
-            </button>
-          </div>
-
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari SKU atau nama bahan..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-[#141b2d] border border-slate-200 dark:border-[#1a2236] text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500 w-56"
-            />
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Katalog persediaan bahan mentah dan kain gulungan ({materials.length} item)</p>
         </div>
       </div>
 
@@ -114,7 +51,7 @@ export default function RawMaterialsTable({ materials, onEdit, onDelete }: RawMa
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-[#1a2236]/60">
-            {filteredMaterials.length > 0 ? (
+            {materials.length > 0 ? (
               pg.pageItems.map((m) => {
                 const isLow = Number(m.currentStock) <= Number(m.minimumStock);
                 return (
@@ -144,22 +81,13 @@ export default function RawMaterialsTable({ materials, onEdit, onDelete }: RawMa
                       )}
                     </td>
                     <td className="py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => onEdit?.(m)}
-                          title="Edit Bahan Baku"
-                          className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 transition-colors cursor-pointer"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete?.(m.id, m.name)}
-                          title="Hapus Bahan Baku"
-                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <button
+                      onClick={() => onProses?.(m)}
+                      title="Proses data"
+                      className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold shadow-sm shadow-red-600/20 transition-colors cursor-pointer"
+                    >
+                      Proses
+                    </button>
                     </td>
                   </tr>
                 );

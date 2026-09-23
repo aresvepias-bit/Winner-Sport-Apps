@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Package, Layers, Scissors, Ruler, Tags, UserRound, Search, ChevronDown, ChevronRight, Settings2, X } from "lucide-react";
@@ -16,14 +16,15 @@ export const MASTER_MENUS = [
 ] satisfies Array<{ key: MasterTabType; label: string; description: string; keywords: string; group: string; icon: typeof Package }>;
 
 interface MasterNavTabsProps {
-  activeTab: MasterTabType;
+  activeTab: MasterTabType | null;
   onTabChange: (tab: MasterTabType) => void;
 }
 
 export default function MasterNavTabs({ activeTab, onTabChange }: MasterNavTabsProps) {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState(false);
-  const activeMenu = MASTER_MENUS.find((menu) => menu.key === activeTab)!;
+  // Saat halaman baru dibuka belum ada menu terpilih, jadi hasil pencarian bisa kosong.
+  const activeMenu = MASTER_MENUS.find((menu) => menu.key === activeTab);
   const query = search.trim().toLocaleLowerCase("id");
   const filtered = MASTER_MENUS.filter((menu) => `${menu.label} ${menu.description} ${menu.keywords} ${menu.group}`.toLocaleLowerCase("id").includes(query));
 
@@ -36,7 +37,7 @@ export default function MasterNavTabs({ activeTab, onTabChange }: MasterNavTabsP
       </div>
       <button type="button" aria-expanded={expanded} aria-controls="master-menu-list" onClick={() => setExpanded(!expanded)} className="flex w-full items-center gap-3 p-4 text-left focus-visible:outline-2 focus-visible:outline-red-500 xl:hidden">
         <Settings2 className="h-5 w-5 text-red-600 dark:text-red-400" />
-        <span className="flex-1"><span className="block text-xs text-slate-500 dark:text-slate-400">Pilih setup master</span><span className="text-sm font-bold">{activeMenu.label}</span></span>
+        <span className="flex-1"><span className="block text-xs text-slate-500 dark:text-slate-400">Pilih setup master</span><span className="text-sm font-bold">{activeMenu?.label ?? "Belum dipilih"}</span></span>
         <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
       <div id="master-menu-list" className={`${expanded ? "block" : "hidden"} xl:block`}>
