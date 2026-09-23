@@ -45,22 +45,6 @@ export const panelLogin: Variants = {
   masuk: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.38, ease: [0.16, 1, 0.3, 1] } }
 };
 
-/**
- * Gumpalan cahaya latar: menghela pelan sambil mengembang-kempis. Tiap gumpalan
- * diberi durasi berbeda supaya iramanya tidak pernah bertemu dan geraknya tidak
- * terbaca sebagai denyut yang seragam.
- */
-export const hanyutBlob = (dx: number, dy: number, detik: number) => ({
-  animate: { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.08, 1] },
-  transition: { duration: detik, repeat: Infinity, ease: "easeInOut" as const }
-});
-
-/** Kisi latar bergeser tepat satu petak lalu mengulang, jadi sambungannya tidak terlihat. */
-export const geserKisi = (petak = 64, detik = 26) => ({
-  animate: { backgroundPosition: ["0px 0px", `${petak}px ${petak}px`] },
-  transition: { duration: detik, repeat: Infinity, ease: "linear" as const }
-});
-
 /** Gerak sangat lambat untuk bentuk latar; hanya memberi kesan hidup. */
 export const hanyutLatar = (jarak = 14, detik = 16) => ({
   animate: { y: [0, -jarak, 0] },
