@@ -7,12 +7,17 @@ import { useState, useEffect } from "react";
  * kroma, keterbedaan bagi buta warna, dan kontras terhadap latar) — mode gelap
  * memakai corak sendiri, bukan sekadar membalik mode terang.
  *
- * Urutannya tetap: seri ke-1 selalu merah, ke-2 biru, ke-3 amber. Warna mengikuti
- * entitas, bukan peringkat, supaya menyaring data tidak mengecat ulang sisanya.
+ * Urutannya tetap: seri ke-1 selalu merah, ke-2 biru, ke-3 hijau-toska. Warna
+ * mengikuti entitas, bukan peringkat, supaya menyaring data tidak mengecat ulang
+ * sisanya.
+ *
+ * Slot ke-3 dulu amber. Diganti karena terhadap merah jaraknya terlalu dekat bagi
+ * mata deuteranopia — di mode gelap hanya 4,4 (ambang 8), praktis tidak terbedakan.
+ * Set sekarang lolos seluruh pemeriksaan pada semua pasangan, di kedua mode.
  */
 export const CHART_SERIES = {
-  light: ["#dc2626", "#2563eb", "#d97706"],
-  dark: ["#ef4444", "#3b82f6", "#d97706"]
+  light: ["#dc2626", "#2563eb", "#1baf7a"],
+  dark: ["#ef4444", "#3b82f6", "#199e70"]
 } as const;
 
 export const CHART_INK = {

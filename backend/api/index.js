@@ -62,6 +62,7 @@ app.use('/api/auth', require('../routes/authRouter'));
 app.use('/api/master', require('../routes/masterRouter'));
 app.use('/api/inventory', require('../routes/inventoryRouter'));
 app.use('/api/production', require('../routes/productionRouter'));
+app.use('/api/reports', require('../routes/reportsRouter'));
 app.use('/api/sales', require('../routes/salesRouter'));
 app.use('/api/purchasing', require('../routes/purchaseRouter'));
 app.use('/api/accounting', require('../routes/accountingRouter'));

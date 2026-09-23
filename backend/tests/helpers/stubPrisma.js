@@ -8,15 +8,31 @@ const path = require('path');
  *   sebagai referensi objek ikut terlihat berubah — seperti relasi asli.
  * - `include` diabaikan: relasi cukup di-seed langsung pada barisnya.
  */
+const teksKecil = (v) => (v === undefined || v === null ? '' : String(v).toLowerCase());
+
+/**
+ * Operator yang benar-benar dipakai kode produksi didukung; sisanya dilewati.
+ * Semua operator dalam satu objek diperiksa, bukan hanya yang pertama ketemu:
+ * `{ gte, lte }` untuk rentang tanggal harus memenuhi keduanya.
+ */
+function cocokOperator(nilai, val) {
+  if (Array.isArray(val.in) && !val.in.includes(nilai)) return false;
+  if (val.lt !== undefined && !(new Date(nilai) < new Date(val.lt))) return false;
+  if (val.lte !== undefined && !(new Date(nilai) <= new Date(val.lte))) return false;
+  if (val.gt !== undefined && !(new Date(nilai) > new Date(val.gt))) return false;
+  if (val.gte !== undefined && !(new Date(nilai) >= new Date(val.gte))) return false;
+  if (val.not !== undefined && nilai === val.not) return false;
+  if (val.contains !== undefined && !teksKecil(nilai).includes(teksKecil(val.contains))) return false;
+  if (val.startsWith !== undefined && !teksKecil(nilai).startsWith(teksKecil(val.startsWith))) return false;
+  return true;
+}
+
 function matches(row, where = {}) {
   return Object.entries(where).every(([key, val]) => {
-    if (val && typeof val === 'object' && !(val instanceof Date)) {
-      // Operator yang benar-benar dipakai kode produksi didukung; sisanya dilewati.
-      if (Array.isArray(val.in)) return val.in.includes(row[key]);
-      if (val.lt !== undefined) return new Date(row[key]) < new Date(val.lt);
-      if (val.gte !== undefined) return new Date(row[key]) >= new Date(val.gte);
-      return true;
-    }
+    if (key === 'OR') return (val || []).some((w) => matches(row, w));
+    if (key === 'AND') return (val || []).every((w) => matches(row, w));
+    if (key === 'NOT') return !matches(row, val);
+    if (val && typeof val === 'object' && !(val instanceof Date)) return cocokOperator(row[key], val);
     return row[key] === val;
   });
 }
